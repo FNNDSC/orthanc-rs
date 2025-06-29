@@ -1,35 +1,41 @@
 #![allow(non_snake_case)]
 
 use crate::orthanc;
+use crate::orthanc::callback::{
+    create_json_rest_callback, register_on_change, register_rest_no_lock,
+};
+use crate::orthanc::{OrthancPluginHttpRequest, OrthancPluginRestOutput};
+use std::sync::RwLock;
 
-/// Wrapper struct for a callback function whose FFI will be generated automatically by `bindgen`.
-#[repr(C)]
-struct OnChangeParams {
-    callback: orthanc::OrthancPluginOnChangeCallback,
+static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState { context: None });
+
+struct AppState {
+    context: Option<OrthancContext>,
 }
+
+struct OrthancContext(*mut orthanc::OrthancPluginContext);
+unsafe impl Send for OrthancContext {}
+unsafe impl Sync for OrthancContext {}
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginInitialize(context: *mut orthanc::OrthancPluginContext) -> i32 {
-    // let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
-    // app_state.context = Some(OrthancContext(context));
-
-    let params = Box::new(OnChangeParams {
-        callback: Some(on_change),
-    });
-
-    let params: *const std::ffi::c_void = Box::into_raw(params) as *mut std::ffi::c_void;
-    unsafe {
-        let invoker = (*context).InvokeService;
-        invoker.unwrap()(
-            context,
-            orthanc::_OrthancPluginService__OrthancPluginService_RegisterOnChangeCallback,
-            params,
-        );
+    if let Err(e) = tracing::subscriber::set_global_default(
+        tracing_subscriber::FmtSubscriber::builder()
+            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+            .finish(),
+    ) {
+        eprintln!("Failed to initialize logging in Rust plugin: {e}");
+        return 1;
     }
 
-    println!("HELLO I have registered the callback.");
+    let mut app_state = GLOBAL_STATE
+        .try_write()
+        .expect("Cannot write to GLOBAL_STATE");
+    app_state.context = Some(OrthancContext(context));
 
+    register_on_change(context, Some(on_change));
+    register_rest_no_lock(context, "/blt/studies", Some(rest_callback));
     0
 }
 
@@ -50,13 +56,11 @@ pub extern "C" fn OrthancPluginFinalize() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetName() -> *const u8 {
-    // info!("OrthancPluginGetName");
     "neochris-notifier\0".as_ptr()
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetVersion() -> *const u8 {
-    // info!("OrthancPluginGetVersion");
     concat!(env!("CARGO_PKG_VERSION"), "\0").as_ptr()
 }
 
@@ -100,5 +104,28 @@ extern "C" fn on_change(
     } else {
         orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         // orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+    }
+}
+
+extern "C" fn rest_callback(
+    output: *mut OrthancPluginRestOutput,
+    url: *const std::os::raw::c_char,
+    request: *const OrthancPluginHttpRequest,
+) -> orthanc::OrthancPluginErrorCode {
+    match GLOBAL_STATE.try_read() {
+        Ok(app_state) => {
+            let context = app_state.context.as_ref().unwrap().0;
+            create_json_rest_callback(
+                context,
+                output,
+                url,
+                request,
+                crate::blt::route_http_request,
+            )
+        }
+        Err(_e) => {
+            tracing::error!("Failed to read GLOBAL_STATE");
+            orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+        }
     }
 }
