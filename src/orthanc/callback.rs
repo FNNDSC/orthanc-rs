@@ -22,26 +22,36 @@ pub(crate) fn register_on_change(
     }
 }
 
-/// Translated from `OrthancPluginRegisterRestCallbackNoLock`.
-pub(crate) fn register_rest_no_lock(
+/// Register a REST callback.
+/// 
+/// Translated from [OrthancPluginRegisterRestCallback](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2341)
+pub fn register_rest(
     context: *mut super::OrthancPluginContext,
     path_regex: &str,
     callback: super::OrthancPluginRestCallback,
 ) {
     let path_regex_c = CString::new(path_regex).unwrap();
-    let params = Box::new(super::_OrthancPluginRestCallback {
+    let params = super::_OrthancPluginRestCallback {
         pathRegularExpression: path_regex_c.as_ptr(),
         callback,
-    });
-    let params: *const std::ffi::c_void = Box::into_raw(params) as *mut std::ffi::c_void;
-    unsafe {
-        let invoker = (*context).InvokeService;
-        invoker.unwrap()(
-            context,
-            super::_OrthancPluginService__OrthancPluginService_RegisterRestCallbackNoLock,
-            params,
-        );
-    }
+    };
+    invoke_service(context, Box::new(params), super::_OrthancPluginService__OrthancPluginService_RegisterRestCallback)
+}
+
+/// Register a REST callback, without locking.
+///
+/// Translated from [OrthancPluginRegisterRestCallbackNoLock](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2381).
+pub fn register_rest_no_lock(
+    context: *mut super::OrthancPluginContext,
+    path_regex: &str,
+    callback: super::OrthancPluginRestCallback,
+) {
+    let path_regex_c = CString::new(path_regex).unwrap();
+    let params = super::_OrthancPluginRestCallback {
+        pathRegularExpression: path_regex_c.as_ptr(),
+        callback,
+    };
+    invoke_service(context, Box::new(params), super::_OrthancPluginService__OrthancPluginService_RegisterRestCallbackNoLock)
 }
 
 /// Create an Orthanc REST callback that uses JSON in its request and response bodies.

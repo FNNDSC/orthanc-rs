@@ -3,17 +3,32 @@
 // TODO HTTP headers are not handled
 
 use std::ffi::CStr;
+use serde::Serialize;
 
-pub(crate) struct Response<S: serde::Serialize> {
+/// An HTTP response from Orthanc.
+pub struct Response<S: serde::Serialize> {
     pub code: http::StatusCode,
     pub body: Option<S>,
 }
 
+impl<S: serde::Serialize> Response<S> {
+    /// Create an HTTP response with a body.
+    pub fn ok(body: S) -> Self {
+        Self { code: http::StatusCode::OK, body: Some(body) }
+    }
+}
+
+impl<S: Serialize> From<http::StatusCode> for Response<S> {
+    fn from(code: http::StatusCode) -> Self {
+        Self { code, body: None }
+    }
+}
+
 /// A HTTP request to Orthanc.
-pub(crate) struct Request<'a, D: serde::Deserialize<'a>> {
+pub struct Request<'a, D: serde::Deserialize<'a>> {
     pub url: &'a str,
     pub body: Option<D>,
-    method: Method,
+    pub method: Method,
 }
 
 impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
@@ -56,6 +71,7 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
 }
 
 /// HTTP method
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub(crate) enum Method {
     /// HTTP GET method
     Get,

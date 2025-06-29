@@ -1,7 +1,7 @@
 #[nutype::nutype(
     sanitize(with = sanitize),
     validate(predicate = validate),
-    derive(Serialize, Deserialize)
+    derive(Serialize, Deserialize, Clone)
 )]
 pub(crate) struct DicomDate(String);
 

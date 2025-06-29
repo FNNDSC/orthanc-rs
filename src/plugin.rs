@@ -1,16 +1,17 @@
 #![allow(non_snake_case)]
 
+use std::collections::HashMap;
 use crate::orthanc;
-use crate::orthanc::callback::{
-    create_json_rest_callback, register_on_change, register_rest_no_lock,
-};
+use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest, register_rest_no_lock};
 use crate::orthanc::{OrthancPluginHttpRequest, OrthancPluginRestOutput};
 use std::sync::RwLock;
+use crate::blt::{AccessionNumber, BltStudy};
 
-static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState { context: None });
+static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState { context: None, blt_requests: None });
 
 struct AppState {
     context: Option<OrthancContext>,
+    blt_requests: Option<HashMap<AccessionNumber, BltStudy>>
 }
 
 struct OrthancContext(*mut orthanc::OrthancPluginContext);
@@ -33,25 +34,19 @@ pub extern "C" fn OrthancPluginInitialize(context: *mut orthanc::OrthancPluginCo
         .try_write()
         .expect("Cannot write to GLOBAL_STATE");
     app_state.context = Some(OrthancContext(context));
+    app_state.blt_requests = Some(HashMap::with_capacity(1000));
 
     register_on_change(context, Some(on_change));
-    register_rest_no_lock(context, "/blt/studies", Some(rest_callback));
+    register_rest(context, "/blt/studies", Some(rest_callback));
     0
 }
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginFinalize() {
-    // let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
-    // if let Some(runtime) = app_state.runtime.take() {
-    //     runtime.shutdown_timeout(Duration::from_secs(5));
-    // }
-    //
-    // //
-    // // Give background runtime time to clean up
-    // //
-    // std::thread::sleep(Duration::from_secs(5));
-    //
-    // info!("finalized");
+    let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
+    if let Some(hashmap) = app_state.blt_requests.take() {
+        drop(hashmap);
+    }
 }
 
 #[unsafe(no_mangle)]
@@ -112,15 +107,16 @@ extern "C" fn rest_callback(
     url: *const std::os::raw::c_char,
     request: *const OrthancPluginHttpRequest,
 ) -> orthanc::OrthancPluginErrorCode {
-    match GLOBAL_STATE.try_read() {
-        Ok(app_state) => {
+    match GLOBAL_STATE.try_write() {
+        Ok(mut app_state) => {
             let context = app_state.context.as_ref().unwrap().0;
+            let blt_studies = app_state.blt_requests.as_mut().unwrap();
             create_json_rest_callback(
                 context,
                 output,
                 url,
                 request,
-                crate::blt::route_http_request,
+                |req| crate::blt::route_http_request(req, blt_studies),
             )
         }
         Err(_e) => {
