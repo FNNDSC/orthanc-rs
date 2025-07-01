@@ -1,19 +1,18 @@
 #![allow(non_snake_case)]
 
-use crate::blt::{AccessionNumber, BltStudy};
 use crate::orthanc::bindings;
 use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest};
-use std::collections::HashMap;
 use std::sync::RwLock;
+use crate::blt::BltDatabase;
 
 static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {
     context: None,
-    blt_requests: None,
+    database: None,
 });
 
 struct AppState {
     context: Option<OrthancContext>,
-    blt_requests: Option<HashMap<AccessionNumber, BltStudy>>,
+    database: Option<BltDatabase>,
 }
 
 struct OrthancContext(*mut bindings::OrthancPluginContext);
@@ -36,7 +35,7 @@ pub extern "C" fn OrthancPluginInitialize(context: *mut bindings::OrthancPluginC
         .try_write()
         .expect("Cannot write to GLOBAL_STATE");
     app_state.context = Some(OrthancContext(context));
-    app_state.blt_requests = Some(HashMap::with_capacity(1000));
+    app_state.database = Some(BltDatabase::with_capacity(1000));
 
     register_on_change(context, Some(on_change));
     register_rest(context, "/blt/studies", Some(rest_callback));
@@ -46,7 +45,7 @@ pub extern "C" fn OrthancPluginInitialize(context: *mut bindings::OrthancPluginC
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginFinalize() {
     let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
-    if let Some(hashmap) = app_state.blt_requests.take() {
+    if let Some(hashmap) = app_state.database.take() {
         drop(hashmap);
     }
 }
@@ -112,7 +111,7 @@ extern "C" fn rest_callback(
     match GLOBAL_STATE.try_write() {
         Ok(mut app_state) => {
             let context = app_state.context.as_ref().unwrap().0;
-            let blt_studies = app_state.blt_requests.as_mut().unwrap();
+            let blt_studies = app_state.database.as_mut().unwrap();
             create_json_rest_callback(context, output, url, request, |req| {
                 crate::blt::route_http_request(context, req, blt_studies)
             })

@@ -33,12 +33,9 @@ impl<S: serde::Serialize> Response<S> {
 impl Response<serde_json::Value> {
     /// Produce an "internal server error" response with an error message.
     pub fn error(msg: String) -> Self {
-        let map = [("error".to_string(), serde_json::Value::String(msg))]
-            .into_iter()
-            .collect();
         Self {
             code: http::StatusCode::INTERNAL_SERVER_ERROR,
-            body: Some(serde_json::Value::Object(map)),
+            body: Some(serde_json::json!({"error": msg})),
         }
     }
 }

@@ -11,6 +11,7 @@ use std::marker::PhantomData;
 pub struct RestResponse<D> {
     /// Code returned by calling the Orthanc function.
     pub code: bindings::OrthancPluginErrorCode,
+    pub uri: String,
     buffer: *mut bindings::OrthancPluginMemoryBuffer,
     context: *mut bindings::OrthancPluginContext,
     phantom: PhantomData<D>,
@@ -19,11 +20,13 @@ pub struct RestResponse<D> {
 impl<D> RestResponse<D> {
     pub(crate) fn new(
         context: *mut bindings::OrthancPluginContext,
+        uri: String,
         code: bindings::OrthancPluginErrorCode,
         buffer: *mut bindings::OrthancPluginMemoryBuffer,
     ) -> Self {
         Self {
             code,
+            uri,
             buffer,
             context,
             phantom: Default::default(),
@@ -99,23 +102,28 @@ impl<T> Possibly<T> {
 }
 
 /// Response from sending a POST request with body.
-pub struct PostJsonResponse<T>(pub serde_json::Result<RestResponse<Possibly<T>>>);
+pub struct PostJsonResponse<T> {
+    pub result: serde_json::Result<RestResponse<Possibly<T>>>,
+    pub uri: String
+}
+
+impl<T> PostJsonResponse<T> {
+    pub fn new(uri: String, result: serde_json::Result<RestResponse<Possibly<T>>>) -> Self {
+        Self { uri, result }
+    }
+}
 
 impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
     /// Produce a response assuming all has gone well. Any serialization+deserialization
     /// errors are responded to with [StatusCode::INTERNAL_SERVER_ERROR].
     pub fn map<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<S> {
-        // NOTE: the error messages emitted by this function are not technically accurate.
-        // We have not actually called OrthancPluginCallRestApi(), nor was it any of
-        // OrthancPluginRestApiGet2(), OrthancPluginRestApiPost(), OrthancPluginRestApiPut(),
-        // OrthancPluginRestApiDelete()... regardless, I still think it's still a meaningful
-        // way to word this (rare) error message.
-        let res = match self.0 {
+        let res = match self.result {
             Ok(res) => res,
             Err(e) => {
                 tracing::error!(
                     error = e.to_string(),
-                    "Could not serialize request to OrthancPluginCallRestApi"
+                    uri = self.uri,
+                    "Could not serialize request"
                 );
                 return Response {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -129,7 +137,8 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
                 Err(e) => {
                     tracing::error!(
                         error = e.to_string(),
-                        "Could not deserialize response from OrthancPluginCallRestApi"
+                        uri = self.uri,
+                        "Could not deserialize response"
                     );
                     return Response {
                         code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -141,7 +150,7 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
         let data = if let Some(data) = maybe {
             data
         } else {
-            tracing::error!("No response from OrthancPluginCallRestApi");
+            tracing::error!(uri = self.uri, "No response");
             return Response {
                 code: StatusCode::INTERNAL_SERVER_ERROR,
                 body: None,
@@ -152,7 +161,8 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
             Possibly::Other(e) => {
                 tracing::error!(
                     value = e.to_string(),
-                    "Unexpected JSON from OrthancPluginCallRestApi"
+                    uri = self.uri,
+                    "Unexpected JSON"
                 );
                 return Response {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
@@ -162,12 +172,4 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
         };
         f(value)
     }
-    // /// See [PostJsonResponse::map].
-    // pub fn map_possibly<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<Possibly<S>> {
-    //     let response = self.map(f);
-    //     Response {
-    //         body: response.body.map(Possibly::Typed),
-    //         code: response.code
-    //     }
-    // }
 }
