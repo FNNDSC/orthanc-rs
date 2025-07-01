@@ -14,14 +14,12 @@ services:
     volumes:
       - pacs:/var/lib/orthanc/db
       - ./orthanc/pacs.jsonc:/etc/orthanc/orthanc.json:ro
-    profiles: [ other ]
 
 #  peer:
 #    image: docker.io/jodogne/orthanc-plugins:1.12.8
 #    volumes:
 #      - peer:/var/lib/orthanc/db
 #      - ./orthanc/peer.jsonc:/etc/orthanc/orthanc.json:ro
-#    profiles: [ other ]
 
 volumes:
   data:

@@ -47,10 +47,8 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
         }
         let slice = unsafe {
             let data = (*self.buffer).data as *const u8;
-            dbg!(size);
             std::slice::from_raw_parts(data, size)
         };
-        dbg!("i got the slice!");
         serde_json::from_slice(slice).map(Some)
     }
 }

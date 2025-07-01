@@ -106,6 +106,7 @@ fn respond_with_body(
     body: Vec<u8>,
     mime_type: CString,
 ) -> bindings::OrthancPluginErrorCode {
+    dbg!(code);
     match code {
         StatusCode::OK => {
             answer_buffer(context, output, body, mime_type);
@@ -124,20 +125,20 @@ fn respond_with_body(
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::NOT_ACCEPTABLE => {
-            send_http_status_code(context, output, code);
+            send_http_status(context, output, code, body);
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotAcceptable
         }
         StatusCode::NOT_IMPLEMENTED => {
-            send_http_status_code(context, output, code);
+            send_http_status(context, output, code, body);
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::BAD_REQUEST => {
-            send_http_status_code(context, output, code);
+            send_http_status(context, output, code, body);
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest
         }
         // note: OrthancPluginErrorCode_Timeout is *not* used for codes 408 nor 504
         _ => {
-            send_http_status_code(context, output, code);
+            send_http_status(context, output, code, body);
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
     }
@@ -217,7 +218,7 @@ fn answer_buffer(
 /// Send an HTTP status, with a custom body.
 ///
 /// Translated from `OrthancPluginSendHttpStatus`.
-fn send_http_status<S: serde::Serialize>(
+fn send_http_status(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,

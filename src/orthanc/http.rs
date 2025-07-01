@@ -70,12 +70,9 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
             None
         } else {
             let slice = unsafe {
-                dbg!("i am deserializing");
-                dbg!(body_size);
                 let data = (*request).body as *const u8;
                 std::slice::from_raw_parts(data, body_size)
             };
-            dbg!("i got the slice!");
             match serde_json::from_slice(slice) {
                 Ok(body) => body,
                 Err(_e) => {
