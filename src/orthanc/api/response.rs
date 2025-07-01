@@ -9,7 +9,8 @@ use std::marker::PhantomData;
 /// making sure that the memory buffer is freed by
 /// [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2241)
 pub struct RestResponse<D> {
-    code: bindings::OrthancPluginErrorCode,
+    /// Code returned by calling the Orthanc function.
+    pub code: bindings::OrthancPluginErrorCode,
     buffer: *mut bindings::OrthancPluginMemoryBuffer,
     context: *mut bindings::OrthancPluginContext,
     phantom: PhantomData<D>,
@@ -40,7 +41,15 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
     /// Get the data from Orthanc's REST API response.
     ///
     /// Behind the scenes, this method reads from the memory buffer and deserializes it as JSON.
-    unsafe fn data(&self) -> serde_json::Result<Option<D>> {
+    ///
+    /// # Return Values
+    ///
+    /// | Value         | Meaning |
+    /// |---------------|------------------------------------------------------------------|
+    /// | `Err(_)`      | JSON deserialization failed (note: `text/plain` not supported)   |
+    /// | `Ok(None)`    | No response from Orthanc (you should check [RestResponse::code]) |
+    /// | `Ok(Some(_))` | Successful response                                              |
+    pub unsafe fn data(&self) -> serde_json::Result<Option<D>> {
         let size = unsafe { (*self.buffer).size as usize };
         if size == 0 {
             return Ok(None);
@@ -50,6 +59,11 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
             std::slice::from_raw_parts(data, size)
         };
         serde_json::from_slice(slice).map(Some)
+    }
+
+    /// Returns the `OK(Some(_))` value. This function may panic.
+    pub unsafe fn unwrap(&self) -> D {
+        unsafe { self.data() }.unwrap().unwrap()
     }
 }
 

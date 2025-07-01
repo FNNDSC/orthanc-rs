@@ -12,6 +12,18 @@ impl ModalitiesClient {
         Self(super::client::Client::new(context))
     }
 
+    /// List all the DICOM modalities that are known to Orthanc.
+    pub fn list_modalities(&self) -> Vec<String> {
+        let response = self.0.get("/modalities");
+        unsafe { response.unwrap() }
+    }
+    
+    /// Trigger C-FIND SCU command against the DICOM modality
+    /// (i.e. query PACS for DICOM data).
+    pub fn c_find(&self) {
+        todo!()
+    }
+
     /// Start a C-MOVE SCU command as a job, in order to drive the execution
     /// of a sequence of C-STORE commands by some remote DICOM modality.
     /// Ref: https://orthanc.uclouvain.be/book/users/rest.html#performing-c-move

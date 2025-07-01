@@ -15,6 +15,14 @@ restart:
       curl -sSf -X POST http://localhost:8042/tools/reset; \
     fi
 
+# Delete all patients from Orthanc
+reset:
+    xh :8042/patients | jaq -r '.[]' | xargs -I _ xh DELETE :8042/patients/_
+
+# Delete a patient fom Orthanc
+delete-patient uuid:
+    xh DELETE :8042/patients/{{uuid}}
+
 # Generate required Rust code
 codegen: generate-bindings generate-openapi-client
 
