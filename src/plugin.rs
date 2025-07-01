@@ -1,9 +1,9 @@
 #![allow(non_snake_case)]
 
+use crate::blt::BltDatabase;
 use crate::orthanc::bindings;
 use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest};
 use std::sync::RwLock;
-use crate::blt::BltDatabase;
 
 static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {
     context: None,
@@ -65,41 +65,34 @@ extern "C" fn on_change(
     resource_type: bindings::OrthancPluginResourceType,
     resource_id: *const std::os::raw::c_char,
 ) -> bindings::OrthancPluginErrorCode {
-    if change_type != bindings::OrthancPluginChangeType_OrthancPluginChangeType_StableSeries {
-        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
-    }
-    if resource_type != bindings::OrthancPluginResourceType_OrthancPluginResourceType_Series {
-        eprintln!(
-            "BUG DETECTED by plugin neochris-notifier: change type is StableSeries, but ResourceType is {resource_type}"
-        );
-        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
-    }
-
     let resource_id = if resource_id.is_null() {
-        None
+        tracing::warn!("resource_id is null");
+        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
     } else {
         match unsafe { std::ffi::CStr::from_ptr(resource_id) }.to_str() {
-            Ok(cstr) => Some(cstr.to_string()),
-            Err(e) => {
-                eprintln!(
-                    "BUG IN plugin neochris-notifier: unable to parse resource_id to Utf8-String - {e}"
-                );
-                None
+            Ok(cstr) => cstr.to_string(),
+            Err(_) => {
+                tracing::error!("resource_id is not UTF-8");
+                return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
             }
         }
     };
-
-    if let Some(resource_id) = resource_id {
-        let uri = format!("http://hello:5678/orthanc/{change_type}/{resource_type}/{resource_id}");
-        eprintln!("{uri}");
-        bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
-        // match ureq::get(uri).call() {
-        //     Ok(_) => bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success,
-        //     Err(_) => bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
-        // }
-    } else {
-        bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
-        // bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+    match GLOBAL_STATE.try_write() {
+        Ok(mut app_state) => {
+            let context = app_state.context.as_ref().unwrap().0;
+            let blt_studies = app_state.database.as_mut().unwrap();
+            crate::blt::on_change(
+                context,
+                blt_studies,
+                change_type,
+                resource_type,
+                resource_id,
+            )
+        }
+        Err(_e) => {
+            tracing::error!("Failed to read GLOBAL_STATE");
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+        }
     }
 }
 

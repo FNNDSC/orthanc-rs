@@ -11,6 +11,8 @@ mod api;
 mod database;
 mod dicom_date;
 mod models;
+mod on_change;
 
 pub use api::route_http_request;
 pub use database::BltDatabase;
+pub use on_change::on_change;

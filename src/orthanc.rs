@@ -19,3 +19,4 @@ pub mod models;
 pub(crate) mod callback;
 mod helpers;
 pub(crate) mod http;
+mod resource_id;

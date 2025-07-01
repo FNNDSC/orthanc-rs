@@ -104,7 +104,7 @@ impl<T> Possibly<T> {
 /// Response from sending a POST request with body.
 pub struct PostJsonResponse<T> {
     pub result: serde_json::Result<RestResponse<Possibly<T>>>,
-    pub uri: String
+    pub uri: String,
 }
 
 impl<T> PostJsonResponse<T> {
@@ -159,11 +159,7 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
         let value = match data {
             Possibly::Typed(value) => value,
             Possibly::Other(e) => {
-                tracing::error!(
-                    value = e.to_string(),
-                    uri = self.uri,
-                    "Unexpected JSON"
-                );
+                tracing::error!(value = e.to_string(), uri = self.uri, "Unexpected JSON");
                 return Response {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
                     body: None,

@@ -1,7 +1,7 @@
-use serde_json::json;
 use crate::orthanc::api::response::PostJsonResponse;
 use crate::orthanc::bindings;
 use crate::orthanc::models::*;
+use serde_json::json;
 
 /// Orthanc client for the networking API.
 ///
@@ -34,7 +34,7 @@ impl ModalitiesClient {
     pub fn query_study<M: std::fmt::Display>(
         &self,
         modality: M,
-        accession_number: String
+        accession_number: String,
     ) -> PostJsonResponse<ModalitiesIdQueryPost200Response> {
         let request = ModalitiesIdQueryPostRequest {
             level: Some("Study".to_string()),

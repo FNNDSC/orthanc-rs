@@ -37,15 +37,14 @@ fn query_and_retrieve(
     } else {
         return Response::error("Orthanc is not configured properly with modalities.".to_string());
     };
-    
+
     let accession_number = study.accession_number.clone().to_string();
-    client.query_study(modality, accession_number)
-        .map(|query| {
-            let query_id = query.id.clone().unwrap().to_string();
-            db.add_study(study, query_id);
-            Response {
-                code: StatusCode::CREATED,
-                body: Some(serde_json::to_value(query).unwrap()),
-            }
-        })
+    client.query_study(modality, accession_number).map(|query| {
+        let query_id = query.id.clone().unwrap().to_string();
+        db.add_study(study, query_id);
+        Response {
+            code: StatusCode::CREATED,
+            body: Some(serde_json::to_value(query).unwrap()),
+        }
+    })
 }
