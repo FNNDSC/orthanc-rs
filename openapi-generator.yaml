@@ -1,0 +1,15 @@
+inputSpec: /3rdparty/orthanc-openapi.json
+
+generatorName: rust
+outputDir: client
+
+# https://openapi-generator.tech/docs/generators/rust/#config-options
+additionalProperties:
+  library: reqwest
+  preferUnsignedInt: true
+  supportAsync: true
+  supportMiddleware: true
+  topLevelApiClient: true
+  useBonBuilder: false
+  packageName: chris-oag
+  '!include': version.yaml

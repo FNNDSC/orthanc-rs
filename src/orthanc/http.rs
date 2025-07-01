@@ -2,8 +2,9 @@
 
 // TODO HTTP headers are not handled
 
-use std::ffi::CStr;
+use super::bindings;
 use serde::Serialize;
+use std::ffi::CStr;
 
 /// An HTTP response from Orthanc.
 pub struct Response<S: serde::Serialize> {
@@ -14,7 +15,18 @@ pub struct Response<S: serde::Serialize> {
 impl<S: serde::Serialize> Response<S> {
     /// Create an HTTP response with a body.
     pub fn ok(body: S) -> Self {
-        Self { code: http::StatusCode::OK, body: Some(body) }
+        Self {
+            code: http::StatusCode::OK,
+            body: Some(body),
+        }
+    }
+
+    /// Change the body.
+    pub fn map_body<T: Serialize, F: FnOnce(S) -> T>(self, f: F) -> Response<T> {
+        Response {
+            body: self.body.map(f),
+            code: self.code,
+        }
     }
 }
 
@@ -35,12 +47,12 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
     /// Deserialize an HTTP request and optional JSON body as safe Rust types.
     pub(crate) unsafe fn try_new(
         url: *const std::os::raw::c_char,
-        request: *const super::OrthancPluginHttpRequest,
-    ) -> Result<Self, super::OrthancPluginErrorCode> {
+        request: *const bindings::OrthancPluginHttpRequest,
+    ) -> Result<Self, bindings::OrthancPluginErrorCode> {
         let method = match Method::try_from(unsafe { (*request).method }) {
             Ok(method) => method,
             Err(()) => {
-                return Err(super::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest);
+                return Err(bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest);
             }
         };
 
@@ -48,7 +60,7 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
         let url = match c_url.to_str() {
             Ok(s) => s,
             Err(_) => {
-                return Err(super::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest);
+                return Err(bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest);
             }
         };
 
@@ -57,12 +69,17 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
         let body = if body_size == 0 {
             None
         } else {
-            let slice =
-                unsafe { std::slice::from_raw_parts((*request).body as *const u8, body_size) };
+            let slice = unsafe {
+                dbg!("i am deserializing");
+                dbg!(body_size);
+                let data = (*request).body as *const u8;
+                std::slice::from_raw_parts(data, body_size)
+            };
+            dbg!("i got the slice!");
             match serde_json::from_slice(slice) {
                 Ok(body) => body,
                 Err(_e) => {
-                    return Err(super::OrthancPluginErrorCode_OrthancPluginErrorCode_BadJson);
+                    return Err(bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadJson);
                 }
             }
         };
@@ -83,15 +100,15 @@ pub(crate) enum Method {
     Delete,
 }
 
-impl TryFrom<super::OrthancPluginHttpMethod> for Method {
+impl TryFrom<bindings::OrthancPluginHttpMethod> for Method {
     type Error = ();
 
-    fn try_from(value: super::OrthancPluginHttpMethod) -> Result<Self, Self::Error> {
+    fn try_from(value: bindings::OrthancPluginHttpMethod) -> Result<Self, Self::Error> {
         match value {
-            super::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Get => Ok(Self::Get),
-            super::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Post => Ok(Self::Post),
-            super::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Put => Ok(Self::Put),
-            super::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Delete => Ok(Self::Delete),
+            bindings::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Get => Ok(Self::Get),
+            bindings::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Post => Ok(Self::Post),
+            bindings::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Put => Ok(Self::Put),
+            bindings::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Delete => Ok(Self::Delete),
             _ => Err(()),
         }
     }

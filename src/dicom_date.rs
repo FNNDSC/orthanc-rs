@@ -12,7 +12,7 @@ fn sanitize(s: String) -> String {
             && let Some(day) = iter.next()
             && let Some(year) = iter.next()
         {
-            dbg!(format!("{year}{month:0>2}{day:0>2}"))
+            format!("{year}{month:0>2}{day:0>2}")
         } else {
             s
         }

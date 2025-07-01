@@ -10,7 +10,7 @@
 
   // The logical name of this instance of Orthanc. This one is
   // displayed in Orthanc Explorer and at the URI "/system".
-  "Name" : "NeoChRIS Test",
+  "Name" : "Test PACS",
 
   // Path to the directory that holds the heavyweight files (i.e. the
   // raw DICOM instances). Backslashes must be either escaped by
@@ -85,8 +85,7 @@
   // find shared libraries. Backslashes must be either escaped by
   // doubling them, or replaced by forward slashes "/".
   "Plugins" : [ 
-    "/usr/share/orthanc/plugins", "/usr/local/share/orthanc/plugins",
-    "/target/debug"
+    "/usr/share/orthanc/plugins", "/usr/local/share/orthanc/plugins"
   ],
 
   // Maximum number of processing jobs that are simultaneously running
@@ -110,12 +109,12 @@
   // Enable the HTTP server. If this parameter is set to "false",
   // Orthanc acts as a pure DICOM server. The REST API and Orthanc
   // Explorer will not be available.
-  "HttpServerEnabled" : true,
+  "HttpServerEnabled" : false,
 
   // Enable/disable the Orthanc Explorer Web user interface. This
   // option is only meaningful if the "HttpServerEnabled" option is
   // set to "true" (new in Orthanc 1.8.2).
-  "OrthancExplorerEnabled" : true,
+  "OrthancExplorerEnabled" : false,
 
   // HTTP port for the REST services and for the GUI
   "HttpPort" : 8042,
@@ -161,7 +160,7 @@
 
   // The DICOM Application Entity Title (cannot be longer than 16
   // characters)
-  "DicomAet" : "CHRISV3",  // set to match chris2222's pfdcm
+  "DicomAet" : "PACS",
 
   // Check whether the called AET corresponds to the AET of Orthanc
   // during an incoming DICOM SCU request
@@ -435,6 +434,8 @@
   // "DicomModalitiesInDatabase" is set to "true", in which case you
   // must use the REST API to define modalities.
   "DicomModalities" : {
+    "DEV": [ "DEV", "dev", 4242 ]
+    
     /**
      * Uncommenting the following line would enable Orthanc to
      * connect to an instance of the "storescp" open-source DICOM
@@ -1082,10 +1083,5 @@
   // at any given time. A value of "0" indicates to use all the
   // available CPU logical cores. Prior to Orthanc 1.12.6, there were not limit.
   // (new in Orthanc 1.12.6)
-  "MaximumConcurrentDcmtkTranscoders" : 0,
-
-  "OrthancExplorer2" : {
-    "IsDefaultOrthancUI": true,
-    "Theme": "dark"
-  }
+  "MaximumConcurrentDcmtkTranscoders" : 0
 }

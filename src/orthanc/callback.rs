@@ -1,57 +1,63 @@
 //! Orthanc plugin initialization callback registration functions.
 
-use crate::orthanc::http::{Request, Response};
+use super::bindings;
+use super::helpers::must_invoke_service;
+use super::http::{Request, Response};
 use http::StatusCode;
 use std::ffi::CString;
 use std::str::FromStr;
 
 /// Translated from `OrthancPluginRegisterOnChangeCallback`.
 pub(crate) fn register_on_change(
-    context: *mut super::OrthancPluginContext,
-    callback: super::OrthancPluginOnChangeCallback,
+    context: *mut bindings::OrthancPluginContext,
+    callback: bindings::OrthancPluginOnChangeCallback,
 ) {
-    let params = Box::new(super::_OrthancPluginOnChangeCallback { callback });
-    let params: *const std::ffi::c_void = Box::into_raw(params) as *mut std::ffi::c_void;
-    unsafe {
-        let invoker = (*context).InvokeService;
-        invoker.unwrap()(
-            context,
-            super::_OrthancPluginService__OrthancPluginService_RegisterOnChangeCallback,
-            params,
-        );
-    }
+    let params = bindings::_OrthancPluginOnChangeCallback { callback };
+    must_invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_RegisterOnChangeCallback,
+        params,
+    )
 }
 
 /// Register a REST callback.
-/// 
+///
 /// Translated from [OrthancPluginRegisterRestCallback](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2341)
 pub fn register_rest(
-    context: *mut super::OrthancPluginContext,
+    context: *mut bindings::OrthancPluginContext,
     path_regex: &str,
-    callback: super::OrthancPluginRestCallback,
+    callback: bindings::OrthancPluginRestCallback,
 ) {
     let path_regex_c = CString::new(path_regex).unwrap();
-    let params = super::_OrthancPluginRestCallback {
+    let params = bindings::_OrthancPluginRestCallback {
         pathRegularExpression: path_regex_c.as_ptr(),
         callback,
     };
-    invoke_service(context, Box::new(params), super::_OrthancPluginService__OrthancPluginService_RegisterRestCallback)
+    must_invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_RegisterRestCallback,
+        params,
+    )
 }
 
 /// Register a REST callback, without locking.
 ///
 /// Translated from [OrthancPluginRegisterRestCallbackNoLock](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2381).
 pub fn register_rest_no_lock(
-    context: *mut super::OrthancPluginContext,
+    context: *mut bindings::OrthancPluginContext,
     path_regex: &str,
-    callback: super::OrthancPluginRestCallback,
+    callback: bindings::OrthancPluginRestCallback,
 ) {
     let path_regex_c = CString::new(path_regex).unwrap();
-    let params = super::_OrthancPluginRestCallback {
+    let params = bindings::_OrthancPluginRestCallback {
         pathRegularExpression: path_regex_c.as_ptr(),
         callback,
     };
-    invoke_service(context, Box::new(params), super::_OrthancPluginService__OrthancPluginService_RegisterRestCallbackNoLock)
+    must_invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_RegisterRestCallbackNoLock,
+        params,
+    )
 }
 
 /// Create an Orthanc REST callback that uses JSON in its request and response bodies.
@@ -61,12 +67,12 @@ pub(crate) fn create_json_rest_callback<
     D: serde::Deserialize<'a>,
     F: FnOnce(Request<D>) -> Response<S>,
 >(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
-    request: *const super::OrthancPluginHttpRequest,
+    request: *const bindings::OrthancPluginHttpRequest,
     handle: F,
-) -> super::OrthancPluginErrorCode {
+) -> bindings::OrthancPluginErrorCode {
     let req = match unsafe { Request::try_new(url, request) } {
         Ok(req) => req,
         Err(e) => {
@@ -79,7 +85,7 @@ pub(crate) fn create_json_rest_callback<
         let body = match serde_json::to_vec(body) {
             Ok(body) => body,
             Err(_e) => {
-                return super::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
+                return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
             }
         };
         let mime_type = CString::new("application/json").unwrap();
@@ -94,45 +100,45 @@ pub(crate) fn create_json_rest_callback<
 /// Note: this function handles the "must use" requirements of Orthanc. See
 /// https://orthanc.uclouvain.be/sdk/group__REST.html#gadc077803cf6cfc5306491097f9063627
 fn respond_with_body(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
     body: Vec<u8>,
     mime_type: CString,
-) -> super::OrthancPluginErrorCode {
+) -> bindings::OrthancPluginErrorCode {
     match code {
         StatusCode::OK => {
             answer_buffer(context, output, body, mime_type);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
         StatusCode::MOVED_PERMANENTLY => {
             // TODO must use ::OrthancPluginRedirect()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::UNAUTHORIZED => {
             // TODO must use ::OrthancPluginSendUnauthorized()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::METHOD_NOT_ALLOWED => {
             // TODO must use ::OrthancPluginSendMethodNotAllowed()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::NOT_ACCEPTABLE => {
             send_http_status_code(context, output, code);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotAcceptable
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotAcceptable
         }
         StatusCode::NOT_IMPLEMENTED => {
             send_http_status_code(context, output, code);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::BAD_REQUEST => {
             send_http_status_code(context, output, code);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest
         }
         // note: OrthancPluginErrorCode_Timeout is *not* used for codes 408 nor 504
         _ => {
             send_http_status_code(context, output, code);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
     }
 }
@@ -142,10 +148,10 @@ fn respond_with_body(
 /// Note: this function handles the "must use" logic required by Orthanc. See
 /// https://orthanc.uclouvain.be/sdk/group__REST.html#ga61be84f0a8886c6c350b20055f97ddc5
 fn respond_no_body(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
-) -> super::OrthancPluginErrorCode {
+) -> bindings::OrthancPluginErrorCode {
     match code {
         StatusCode::OK => {
             answer_buffer(
@@ -154,52 +160,57 @@ fn respond_no_body(
                 Vec::new(),
                 CString::from_str("text/plain").unwrap(),
             );
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
         StatusCode::MOVED_PERMANENTLY => {
             // TODO must use ::OrthancPluginRedirect()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::UNAUTHORIZED => {
             // TODO must use ::OrthancPluginSendUnauthorized()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::METHOD_NOT_ALLOWED => {
             // TODO must use ::OrthancPluginSendMethodNotAllowed()
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
         StatusCode::NOT_ACCEPTABLE => {
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotAcceptable
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotAcceptable
         }
         StatusCode::NOT_IMPLEMENTED => {
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
         }
-        StatusCode::BAD_REQUEST => super::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest,
+        StatusCode::NOT_FOUND => {
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_UnknownResource
+        }
+        StatusCode::BAD_REQUEST => {
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_BadRequest
+        }
         // note: OrthancPluginErrorCode_Timeout is *not* used for codes 408 nor 504
         _ => {
             send_http_status_code(context, output, code);
-            super::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
     }
 }
 
 /// Answer to a REST request. Translated from `OrthancPluginAnswerBuffer`.
 fn answer_buffer(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     body: Vec<u8>,
     mime_type: CString,
 ) {
-    let params = super::_OrthancPluginAnswerBuffer {
+    let params = bindings::_OrthancPluginAnswerBuffer {
         output,
         answer: body.as_ptr() as *const _,
         answerSize: body.len() as u32,
         mimeType: mime_type.as_ptr(),
     };
-    invoke_service(
+    must_invoke_service(
         context,
-        Box::new(params),
-        super::_OrthancPluginService__OrthancPluginService_AnswerBuffer,
+        bindings::_OrthancPluginService__OrthancPluginService_AnswerBuffer,
+        params,
     )
 }
 
@@ -207,21 +218,21 @@ fn answer_buffer(
 ///
 /// Translated from `OrthancPluginSendHttpStatus`.
 fn send_http_status<S: serde::Serialize>(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
     body: Vec<u8>,
 ) {
-    let params = super::_OrthancPluginSendHttpStatus {
+    let params = bindings::_OrthancPluginSendHttpStatus {
         output,
         status: code.as_u16(),
         body: body.as_ptr() as *const _,
         bodySize: body.len() as u32,
     };
-    invoke_service(
+    must_invoke_service(
         context,
-        Box::new(params),
-        super::_OrthancPluginService__OrthancPluginService_SendHttpStatus,
+        bindings::_OrthancPluginService__OrthancPluginService_SendHttpStatus,
+        params,
     )
 }
 
@@ -229,29 +240,17 @@ fn send_http_status<S: serde::Serialize>(
 ///
 /// Translated from `OrthancPluginSendHttpStatusCode`.
 fn send_http_status_code(
-    context: *mut super::OrthancPluginContext,
-    output: *mut super::OrthancPluginRestOutput,
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
 ) {
-    let params = super::_OrthancPluginSendHttpStatusCode {
+    let params = bindings::_OrthancPluginSendHttpStatusCode {
         output,
         status: code.as_u16(),
     };
-    invoke_service(
+    must_invoke_service(
         context,
-        Box::new(params),
-        super::_OrthancPluginService__OrthancPluginService_SendHttpStatusCode,
+        bindings::_OrthancPluginService__OrthancPluginService_SendHttpStatusCode,
+        params,
     )
-}
-
-fn invoke_service<T>(
-    context: *mut super::OrthancPluginContext,
-    params: Box<T>,
-    service: super::_OrthancPluginService,
-) {
-    let params: *const std::ffi::c_void = Box::into_raw(params) as *mut std::ffi::c_void;
-    unsafe {
-        let invoker = (*context).InvokeService;
-        invoker.unwrap()(context, service, params);
-    }
 }

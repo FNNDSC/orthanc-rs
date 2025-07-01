@@ -1,15 +1,29 @@
 services:
-  orthanc:
+  dev:
     image: docker.io/jodogne/orthanc-plugins:1.12.8
     volumes:
       - data:/var/lib/orthanc/db
-      - ./Orthanc.jsonc:/etc/orthanc/orthanc.json:ro
+      - ./orthanc/dev.jsonc:/etc/orthanc/orthanc.json:ro
       - ./target:/target:ro
     ports:
       - 4242:4242
       - 8042:8042
-  hello:
-    image: docker.io/hashicorp/http-echo:latest
+  
+  pacs:
+    image: docker.io/jodogne/orthanc-plugins:1.12.8
+    volumes:
+      - pacs:/var/lib/orthanc/db
+      - ./orthanc/pacs.jsonc:/etc/orthanc/orthanc.json:ro
+    profiles: [ other ]
+
+#  peer:
+#    image: docker.io/jodogne/orthanc-plugins:1.12.8
+#    volumes:
+#      - peer:/var/lib/orthanc/db
+#      - ./orthanc/peer.jsonc:/etc/orthanc/orthanc.json:ro
+#    profiles: [ other ]
 
 volumes:
   data:
+  pacs:
+  peer:

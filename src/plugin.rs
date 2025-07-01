@@ -1,26 +1,28 @@
 #![allow(non_snake_case)]
 
-use std::collections::HashMap;
-use crate::orthanc;
-use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest, register_rest_no_lock};
-use crate::orthanc::{OrthancPluginHttpRequest, OrthancPluginRestOutput};
-use std::sync::RwLock;
 use crate::blt::{AccessionNumber, BltStudy};
+use crate::orthanc::bindings;
+use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest};
+use std::collections::HashMap;
+use std::sync::RwLock;
 
-static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState { context: None, blt_requests: None });
+static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {
+    context: None,
+    blt_requests: None,
+});
 
 struct AppState {
     context: Option<OrthancContext>,
-    blt_requests: Option<HashMap<AccessionNumber, BltStudy>>
+    blt_requests: Option<HashMap<AccessionNumber, BltStudy>>,
 }
 
-struct OrthancContext(*mut orthanc::OrthancPluginContext);
+struct OrthancContext(*mut bindings::OrthancPluginContext);
 unsafe impl Send for OrthancContext {}
 unsafe impl Sync for OrthancContext {}
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub extern "C" fn OrthancPluginInitialize(context: *mut orthanc::OrthancPluginContext) -> i32 {
+pub extern "C" fn OrthancPluginInitialize(context: *mut bindings::OrthancPluginContext) -> i32 {
     if let Err(e) = tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
@@ -60,18 +62,18 @@ pub extern "C" fn OrthancPluginGetVersion() -> *const u8 {
 }
 
 extern "C" fn on_change(
-    change_type: orthanc::OrthancPluginChangeType,
-    resource_type: orthanc::OrthancPluginResourceType,
+    change_type: bindings::OrthancPluginChangeType,
+    resource_type: bindings::OrthancPluginResourceType,
     resource_id: *const std::os::raw::c_char,
-) -> orthanc::OrthancPluginErrorCode {
-    if change_type != orthanc::OrthancPluginChangeType_OrthancPluginChangeType_StableSeries {
-        return orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
+) -> bindings::OrthancPluginErrorCode {
+    if change_type != bindings::OrthancPluginChangeType_OrthancPluginChangeType_StableSeries {
+        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
     }
-    if resource_type != orthanc::OrthancPluginResourceType_OrthancPluginResourceType_Series {
+    if resource_type != bindings::OrthancPluginResourceType_OrthancPluginResourceType_Series {
         eprintln!(
             "BUG DETECTED by plugin neochris-notifier: change type is StableSeries, but ResourceType is {resource_type}"
         );
-        return orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
+        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success;
     }
 
     let resource_id = if resource_id.is_null() {
@@ -91,37 +93,33 @@ extern "C" fn on_change(
     if let Some(resource_id) = resource_id {
         let uri = format!("http://hello:5678/orthanc/{change_type}/{resource_type}/{resource_id}");
         eprintln!("{uri}");
-        orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+        bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         // match ureq::get(uri).call() {
-        //     Ok(_) => orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success,
-        //     Err(_) => orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+        //     Ok(_) => bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success,
+        //     Err(_) => bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
         // }
     } else {
-        orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
-        // orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+        bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+        // bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
     }
 }
 
 extern "C" fn rest_callback(
-    output: *mut OrthancPluginRestOutput,
+    output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
-    request: *const OrthancPluginHttpRequest,
-) -> orthanc::OrthancPluginErrorCode {
+    request: *const bindings::OrthancPluginHttpRequest,
+) -> bindings::OrthancPluginErrorCode {
     match GLOBAL_STATE.try_write() {
         Ok(mut app_state) => {
             let context = app_state.context.as_ref().unwrap().0;
             let blt_studies = app_state.blt_requests.as_mut().unwrap();
-            create_json_rest_callback(
-                context,
-                output,
-                url,
-                request,
-                |req| crate::blt::route_http_request(req, blt_studies),
-            )
+            create_json_rest_callback(context, output, url, request, |req| {
+                crate::blt::route_http_request(context, req, blt_studies)
+            })
         }
         Err(_e) => {
             tracing::error!("Failed to read GLOBAL_STATE");
-            orthanc::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
+            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
         }
     }
 }
