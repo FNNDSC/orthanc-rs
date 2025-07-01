@@ -23,10 +23,8 @@ pub(crate) struct BltStudy {
 }
 
 /// DICOM AccessionNumber
-#[nutype::nutype(derive(Serialize, Deserialize, Clone, Hash, Eq, PartialEq, AsRef, Deref))]
-pub(crate) struct AccessionNumber(kstring::KString);
-
-/// The state of a BLT request being processed by this Orthanc plugin.
-pub(crate) enum BltPipelineState {
-    Query(String),
-}
+#[nutype::nutype(
+    derive(Serialize, Deserialize, Clone, Hash, Eq, PartialEq, AsRef, Deref),
+    validate(predicate = |s| !s.is_empty())
+)]
+pub struct AccessionNumber(kstring::KString);

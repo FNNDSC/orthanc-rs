@@ -65,7 +65,8 @@ pub(crate) fn create_json_rest_callback<
     'a,
     S: serde::Serialize,
     D: serde::Deserialize<'a>,
-    F: FnOnce(Request<D>) -> Response<S>,
+    R: Into<Response<S>>,
+    F: FnOnce(Request<D>) -> R,
 >(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
@@ -79,7 +80,7 @@ pub(crate) fn create_json_rest_callback<
             return e;
         }
     };
-    let res = handle(req);
+    let res = handle(req).into();
 
     if let Some(body) = &res.body {
         let body = match serde_json::to_vec(body) {
@@ -106,7 +107,6 @@ fn respond_with_body(
     body: Vec<u8>,
     mime_type: CString,
 ) -> bindings::OrthancPluginErrorCode {
-    dbg!(code);
     match code {
         StatusCode::OK => {
             answer_buffer(context, output, body, mime_type);

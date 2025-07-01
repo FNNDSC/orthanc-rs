@@ -120,3 +120,9 @@ impl TryFrom<bindings::OrthancPluginHttpMethod> for Method {
         }
     }
 }
+
+impl<A: Serialize> From<Result<Response<A>, Response<A>>> for Response<A> {
+    fn from(value: Result<Response<A>, Response<A>>) -> Self {
+        value.unwrap_or_else(|value| value)
+    }
+}

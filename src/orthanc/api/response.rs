@@ -114,9 +114,9 @@ impl<T> PostJsonResponse<T> {
 }
 
 impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
-    /// Produce a response assuming all has gone well. Any serialization+deserialization
-    /// errors are responded to with [StatusCode::INTERNAL_SERVER_ERROR].
-    pub fn map<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<S> {
+    /// Return the value as [Ok], and any serialization+deserialization
+    /// errors as [Err] with `code` being [StatusCode::INTERNAL_SERVER_ERROR].
+    pub fn into_result<R: Serialize>(self) -> Result<T, Response<R>> {
         let res = match self.result {
             Ok(res) => res,
             Err(e) => {
@@ -125,10 +125,11 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
                     uri = self.uri,
                     "Could not serialize request"
                 );
-                return Response {
+                let response = Response {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
                     body: None,
                 };
+                return Err(response);
             }
         };
         let maybe = unsafe {
@@ -140,10 +141,11 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
                         uri = self.uri,
                         "Could not deserialize response"
                     );
-                    return Response {
+                    let response = Response {
                         code: StatusCode::INTERNAL_SERVER_ERROR,
                         body: None,
                     };
+                    return Err(response);
                 }
             }
         };
@@ -151,21 +153,32 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
             data
         } else {
             tracing::error!(uri = self.uri, "No response");
-            return Response {
+            let response = Response {
                 code: StatusCode::INTERNAL_SERVER_ERROR,
                 body: None,
             };
+            return Err(response);
         };
-        let value = match data {
-            Possibly::Typed(value) => value,
+        match data {
+            Possibly::Typed(value) => Ok(value),
             Possibly::Other(e) => {
                 tracing::error!(value = e.to_string(), uri = self.uri, "Unexpected JSON");
-                return Response {
+                let response = Response {
                     code: StatusCode::INTERNAL_SERVER_ERROR,
                     body: None,
                 };
+                Err(response)
             }
-        };
-        f(value)
+        }
+    }
+    
+    /// Convenience function which calls [PostJsonResponse::into_result], calling the
+    /// given `f` if the value is [Ok], otherwise returning the [Err] value without
+    /// calling `f`.
+    pub fn map_ok<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<S> {
+        match self.into_result() {
+            Ok(value) => f(value),
+            Err(response) => response
+        }
     }
 }

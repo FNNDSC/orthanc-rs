@@ -17,7 +17,7 @@ pub fn route_http_request(
         Method::Get => Response::ok(serde_json::to_value(db.list_studies()).unwrap()),
         Method::Post => {
             if let Some(study) = req.body {
-                query_and_retrieve(context, db, study)
+                query_and_retrieve(context, db, study).into()
             } else {
                 Response::from(StatusCode::BAD_REQUEST)
             }
@@ -30,21 +30,22 @@ fn query_and_retrieve(
     context: *mut OrthancPluginContext,
     db: &mut BltDatabase,
     study: BltStudy,
-) -> Response<serde_json::Value> {
+) -> Result<Response<serde_json::Value>, Response<serde_json::Value>> {
     let client = crate::orthanc::api::ModalitiesClient::new(context);
-    let modality = if let Some(m) = client.list_modalities().into_iter().next() {
-        m
-    } else {
-        return Response::error("Orthanc is not configured properly with modalities.".to_string());
-    };
+    let modality = client.list_modalities().into_iter().next()
+        .ok_or_else(|| {
+            Response::error("Orthanc is not configured properly with modalities.".to_string())
+        })?;
 
     let accession_number = study.accession_number.clone().to_string();
-    client.query_study(modality, accession_number).map(|query| {
-        let query_id = query.id.clone().unwrap().to_string();
-        db.add_study(study, query_id);
-        Response {
-            code: StatusCode::CREATED,
-            body: Some(serde_json::to_value(query).unwrap()),
-        }
+    let query = client.query_study(modality, accession_number).into_result()?;
+    if let Some(i) = query.id.clone() && let serde_json::Value::String(id) = i {
+        db.add_study(study, id);
+    } else {
+        return Err(Response::error("Orthanc returned an invalid query ID".to_string()));
+    };
+    Ok(Response {
+        code: StatusCode::CREATED,
+        body: Some(serde_json::to_value(query).unwrap())
     })
 }
