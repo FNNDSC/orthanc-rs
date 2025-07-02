@@ -9,11 +9,11 @@ use super::response::JsonResponseError;
 /// Orthanc client for the networking API.
 ///
 /// Ref: https://orthanc.uclouvain.be/api/#tag/Networking
-pub struct ModalitiesClient(super::client::Client);
+pub struct ModalitiesClient(super::client::BaseClient);
 
 impl ModalitiesClient {
     pub fn new(context: *mut bindings::OrthancPluginContext) -> Self {
-        Self(super::client::Client::new(context))
+        Self(super::client::BaseClient::new(context))
     }
 
     /// List all the DICOM modalities that are known to Orthanc.

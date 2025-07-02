@@ -18,7 +18,7 @@ pub struct RestResponse<D> {
 }
 
 impl<D> RestResponse<D> {
-    pub(crate) fn new(
+    pub(super) fn new(
         context: *mut bindings::OrthancPluginContext,
         uri: String,
         code: bindings::OrthancPluginErrorCode,
@@ -41,7 +41,7 @@ impl<D> Drop for RestResponse<D> {
 }
 
 impl<'a, D: Deserialize<'a>> RestResponse<D> {
-    /// Get the data from Orthanc's REST API response.
+    /// Get the data from Orthanc's REST API response, if any.
     ///
     /// Behind the scenes, this method reads from the memory buffer and deserializes it as JSON.
     ///
@@ -52,7 +52,7 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
     /// | `Err(_)`      | JSON deserialization failed (note: `text/plain` not supported)   |
     /// | `Ok(None)`    | No response from Orthanc (you should check [RestResponse::code]) |
     /// | `Ok(Some(_))` | Successful response                                              |
-    pub unsafe fn data(&self) -> serde_json::Result<Option<D>> {
+    pub fn option_data(&self) -> serde_json::Result<Option<D>> {
         let size = unsafe { (*self.buffer).size as usize };
         if size == 0 {
             return Ok(None);
@@ -64,9 +64,16 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
         serde_json::from_slice(slice).map(Some)
     }
 
-    /// Returns the `OK(Some(_))` value. This function may panic.
-    pub unsafe fn unwrap(&self) -> D {
-        unsafe { self.data() }.unwrap().unwrap()
+    /// Get the data from Orthanc's response.
+    pub fn data(&self) -> Result<D, JsonResponseError<D>> {
+        self.option_data()
+            .map_err(|e| JsonResponseError::deserialization(self.uri.clone(), e))?
+            .ok_or_else(|| JsonResponseError::no_response(self.uri.clone()))
+    }
+
+    /// Returns the value. This function may panic.
+    pub fn unwrap(&self) -> D {
+        self.option_data().unwrap().unwrap()
     }
 }
 
@@ -134,6 +141,24 @@ pub enum JsonResponseErrorKind<T> {
     BadValue { value: T, reason: &'static str },
 }
 
+impl<T> JsonResponseError<T> {
+    /// Create a [JsonResponseError] of kind [JsonResponseErrorKind::Deserialization].
+    pub fn deserialization(uri: String, error: serde_json::Error) -> Self {
+        Self {
+            uri,
+            kind: JsonResponseErrorKind::Deserialization(error),
+        }
+    }
+
+    /// Create a [JsonResponseError] of kind [JsonResponseErrorKind::NoResponse].
+    pub fn no_response(uri: String) -> Self {
+        Self {
+            uri,
+            kind: JsonResponseErrorKind::NoResponse,
+        }
+    }
+}
+
 impl<T: std::fmt::Debug> JsonResponseError<T> {
     pub fn trace(&self) {
         match &self.kind {
@@ -197,7 +222,8 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
                 uri: self.uri.clone(),
                 kind,
             })?;
-        let possibly = unsafe { res.data() }
+        let possibly = res
+            .option_data()
             .map_err(JsonResponseErrorKind::Deserialization)
             .map_err(|kind| JsonResponseError {
                 uri: self.uri.clone(),

@@ -43,6 +43,17 @@ fn query_and_retrieve(
             e.trace();
             Response::from(e)
         })?;
+    let answers = query.answers()
+        .map_err(|e| {
+            e.trace();
+            Response::from(e)
+        })?;
+    if answers.is_empty() {
+        return Ok(Response {
+            code: StatusCode::NO_CONTENT,
+            body: None,
+        })
+    }
     db.add_study(study, query.id.clone());
     Ok(Response {
         code: StatusCode::CREATED,

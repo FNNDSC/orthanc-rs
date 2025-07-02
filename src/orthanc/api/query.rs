@@ -1,3 +1,4 @@
+use crate::orthanc::api::answers::Answers;
 use crate::orthanc::api::response::PostJsonResponse;
 use crate::orthanc::models::ModalitiesIdQueryPost200Response as MaybeQueryId;
 
@@ -12,24 +13,57 @@ use super::response::JsonResponseError;
 /// [`/queries/{id}`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}/get).
 pub struct OrthancQuery {
     pub id: String,
-    client: super::client::Client,
+    path: String,
+    client: super::client::BaseClient,
 }
 
 impl OrthancQuery {
-    pub(crate) fn try_new(
-        client: &super::client::Client,
+    pub(super) fn try_new(
+        client: &super::client::BaseClient,
         response: PostJsonResponse<MaybeQueryId>,
     ) -> Result<Self, JsonResponseError<MaybeQueryId>> {
-        let id = response.and_then(get_id)?;
+        let (id, path) = response.and_then(must_get)?;
         let client = client.clone();
-        Ok(Self { id, client })
+        Ok(Self { id, path, client })
+    }
+
+    /// Get the answers to this query.
+    pub fn answers(&self) -> Result<Answers, JsonResponseError<Vec<kstring::KString>>> {
+        let url = format!("{}/answers", &self.path);
+        let answers = self.client.get(url).data()?;
+        Ok(Answers::new(
+            self.client.clone(),
+            self.path.clone(),
+            answers,
+        ))
     }
 }
 
-fn get_id(value: MaybeQueryId) -> Result<String, (MaybeQueryId, &'static str)> {
+/// Get `id` and `path` as required strings.
+fn must_get(value: MaybeQueryId) -> Result<(String, String), (MaybeQueryId, &'static str)> {
+    // needlessly ugly and efficient implementation
     if let Some(id) = value.id {
         match id {
-            serde_json::Value::String(id) => Ok(id),
+            serde_json::Value::String(id) => {
+                if let Some(path) = value.path {
+                    match path {
+                        serde_json::Value::String(path) => Ok((id, path)),
+                        other => {
+                            let original = MaybeQueryId {
+                                id: Some(serde_json::Value::String(id)),
+                                path: Some(other),
+                            };
+                            Err((original, "id is not a string"))
+                        }
+                    }
+                } else {
+                    let original = MaybeQueryId {
+                        id: Some(serde_json::Value::String(id)),
+                        path: None,
+                    };
+                    Err((original, "path is None"))
+                }
+            }
             other => {
                 let original = MaybeQueryId {
                     id: Some(other),

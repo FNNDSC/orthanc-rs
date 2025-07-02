@@ -7,12 +7,12 @@ use std::ffi::CString;
 /// Safe-rust wrappers for
 /// [`OrthancPluginCallRestApi`](https://orthanc.uclouvain.be/sdk/group__Orthanc.html#gae1588d25e5686eb4d2d6ee7946db2730)
 #[derive(Copy, Clone)]
-pub struct Client {
+pub struct BaseClient {
     context: *mut bindings::OrthancPluginContext,
 }
 
-impl Client {
-    /// Create a [Client].
+impl BaseClient {
+    /// Create a [BaseClient].
     pub fn new(context: *mut bindings::OrthancPluginContext) -> Self {
         Self { context }
     }
