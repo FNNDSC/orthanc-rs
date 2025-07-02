@@ -43,18 +43,21 @@ fn query_and_retrieve(
             e.trace();
             Response::from(e)
         })?;
-    let answers = query.answers()
-        .map_err(|e| {
-            e.trace();
-            Response::from(e)
-        })?;
+    let answers = query.answers().map_err(|e| {
+        e.trace();
+        Response::from(e)
+    })?;
     if answers.is_empty() {
         return Ok(Response {
             code: StatusCode::NO_CONTENT,
             body: None,
-        })
+        });
     }
-    db.add_study(study, query.id.clone());
+    let job = query.request_retrieve_job().into_result().map_err(|e| {
+        e.trace();
+        Response::from(e)
+    })?;
+    db.add_study(study, query.id.clone()); // TODO ADD JOB TO DB
     Ok(Response {
         code: StatusCode::CREATED,
         body: None,

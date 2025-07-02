@@ -1,6 +1,10 @@
 use crate::orthanc::api::answers::Answers;
+use crate::orthanc::api::job::Job;
 use crate::orthanc::api::response::PostJsonResponse;
-use crate::orthanc::models::ModalitiesIdQueryPost200Response as MaybeQueryId;
+use crate::orthanc::models::{
+    ModalitiesIdQueryPost200Response as MaybeQueryId,
+    QueriesIdAnswersIndexRetrievePostRequest as RetrieveRequest,
+};
 
 use super::response::JsonResponseError;
 
@@ -36,6 +40,27 @@ impl OrthancQuery {
             self.path.clone(),
             answers,
         ))
+    }
+
+    /// Retrieve all the answers associated with this query/retrieve operation.
+    ///
+    /// Corresponds with [`/queries/{id}}/retrieve`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}~1retrieve/post).
+    pub fn retrieve_raw<'a, T: serde::Deserialize<'a>>(
+        &self,
+        request: RetrieveRequest,
+    ) -> PostJsonResponse<T> {
+        let uri = format!("{}/retrieve", &self.path);
+        self.client.post(uri, request)
+    }
+
+    /// Retrieve all the answers associated with this query/retrieve operation
+    /// in an asynchronous job.
+    pub fn request_retrieve_job(&self) -> PostJsonResponse<Job> {
+        let request = RetrieveRequest {
+            asynchronous: Some(true),
+            ..Default::default()
+        };
+        self.retrieve_raw(request)
     }
 }
 
