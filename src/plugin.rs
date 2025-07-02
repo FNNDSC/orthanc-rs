@@ -3,17 +3,17 @@
 use crate::blt::BltDatabase;
 use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest};
 use crate::orthanc::{OnChangeEvent, OnChangeThread, bindings};
-use std::sync::RwLock;
+use std::sync::{Mutex, RwLock};
 
 static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {
     context: None,
-    database: None,
     on_change_thread: None,
 });
 
+static DATABASE: Mutex<Option<BltDatabase>> = Mutex::new(None);
+
 struct AppState {
     context: Option<OrthancContext>,
-    database: Option<BltDatabase>,
     on_change_thread: Option<OnChangeThread>,
 }
 
@@ -23,29 +23,30 @@ unsafe impl Sync for OrthancContext {}
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
-pub extern "C" fn OrthancPluginInitialize(context: *mut bindings::OrthancPluginContext) -> i32 {
+pub extern "C" fn OrthancPluginInitialize(
+    context: *mut bindings::OrthancPluginContext,
+) -> bindings::OrthancPluginErrorCode {
     if let Err(e) = tracing::subscriber::set_global_default(
         tracing_subscriber::FmtSubscriber::builder()
             // TODO set verbosity from Orthanc JSON
             .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
             .finish(),
-    ) {
+    ) && !e.to_string().contains("has already been set")
+    {
         eprintln!("Failed to initialize logging in Rust plugin: {e}");
-        return 1;
     }
 
-    let mut app_state = GLOBAL_STATE
-        .try_write()
-        .expect("Cannot write to GLOBAL_STATE");
+    let mut app_state = GLOBAL_STATE.try_write().unwrap();
     app_state.context = Some(OrthancContext(context));
-    app_state.database = Some(BltDatabase::with_capacity(1000));
+
+    let mut db_mutex = DATABASE.lock().unwrap();
+    let _ = db_mutex.insert(BltDatabase::with_capacity(1000));
 
     app_state.on_change_thread = Some(OnChangeThread::spawn(move |event| {
-        let mut app_state = GLOBAL_STATE
-            .try_write()
-            .expect("Cannot write to GLOBAL_STATE");
+        let app_state = GLOBAL_STATE.try_read().unwrap();
         let context = app_state.context.as_ref().unwrap().0;
-        let database = app_state.database.as_mut().unwrap();
+        let mut db_mutex = DATABASE.lock().unwrap();
+        let database = db_mutex.as_mut().unwrap();
         crate::blt::on_change(context, database, event);
     }));
 
@@ -58,11 +59,12 @@ pub extern "C" fn OrthancPluginInitialize(context: *mut bindings::OrthancPluginC
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginFinalize() {
     let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
-    if let Some(hashmap) = app_state.database.take() {
-        drop(hashmap);
-    }
     if let Some(thread) = app_state.on_change_thread.take() {
         thread.join().unwrap()
+    }
+    let mut db_mutex = DATABASE.lock().unwrap();
+    if let Some(hashmap) = db_mutex.take() {
+        drop(hashmap);
     }
 }
 
@@ -112,17 +114,21 @@ extern "C" fn rest_callback(
     url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
 ) -> bindings::OrthancPluginErrorCode {
-    match GLOBAL_STATE.try_write() {
-        Ok(mut app_state) => {
-            let context = app_state.context.as_ref().unwrap().0;
-            let blt_studies = app_state.database.as_mut().unwrap();
-            create_json_rest_callback(context, output, url, request, |req| {
-                crate::blt::route_http_request(context, req, blt_studies)
-            })
-        }
-        Err(_e) => {
-            tracing::error!("Failed to read GLOBAL_STATE");
-            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
-        }
-    }
+    let app_state = if let Ok(app_state) = GLOBAL_STATE.try_read() {
+        app_state
+    } else {
+        tracing::error!("Failed to read GLOBAL_STATE");
+        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
+    };
+    let mut db_mutex = if let Ok(mut db_mutex) = DATABASE.lock() {
+        db_mutex
+    } else {
+        tracing::error!("Failed to lock database mutex, did a background thread panic?");
+        return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
+    };
+    let context = app_state.context.as_ref().unwrap().0;
+    let database = db_mutex.as_mut().unwrap();
+    create_json_rest_callback(context, output, url, request, |req| {
+        crate::blt::route_http_request(context, req, database)
+    })
 }

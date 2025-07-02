@@ -1,6 +1,6 @@
 use crate::blt::BltDatabase;
-use crate::orthanc::{OnChangeEvent, bindings};
 use crate::orthanc::api::JobId;
+use crate::orthanc::{OnChangeEvent, bindings};
 
 pub fn on_change(
     context: *mut bindings::OrthancPluginContext,
@@ -13,7 +13,11 @@ pub fn on_change(
 ) {
     match change_type {
         bindings::OrthancPluginChangeType_OrthancPluginChangeType_JobSuccess => {
-            on_job_success(context, db, JobId::new(resource_id))
+            if let Some(id) = resource_id {
+                on_job_success(context, db, JobId::new(id))
+            } else {
+                tracing::warn!("resource_id is null");
+            }
         }
         _ => (),
     }
@@ -22,7 +26,7 @@ pub fn on_change(
 pub fn on_job_success(
     context: *mut bindings::OrthancPluginContext,
     db: &mut BltDatabase,
-    id: JobId
+    id: JobId,
 ) {
     if !db.has_retrieve(&id) {
         return;

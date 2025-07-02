@@ -2,7 +2,7 @@ services:
   dev:
     image: docker.io/jodogne/orthanc-plugins:1.12.8
     volumes:
-      - data:/var/lib/orthanc/db
+      - dev:/var/lib/orthanc/db
       - ./orthanc/dev.jsonc:/etc/orthanc/orthanc.json:ro
       - ./target:/target:ro
     ports:
@@ -25,6 +25,6 @@ services:
 #      - ./orthanc/peer.jsonc:/etc/orthanc/orthanc.json:ro
 
 volumes:
-  data:
+  dev:
   pacs:
   peer:

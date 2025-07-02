@@ -17,7 +17,9 @@ restart:
 
 # Delete all patients from Orthanc
 reset:
-    xh :8042/patients | jaq -r '.[]' | xargs -I _ xh DELETE :8042/patients/_
+    for api in patients jobs queries; do \
+      xh :8042/$api | jaq -r '.[]' | xargs -I _ xh DELETE :8042/$api/_ ; \
+    done
 
 # Delete a patient fom Orthanc
 delete-patient uuid:
