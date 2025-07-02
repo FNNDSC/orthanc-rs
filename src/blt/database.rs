@@ -63,4 +63,9 @@ impl BltDatabase {
         self.queries.insert(query_id, accession_number.clone());
         self.retrieve_jobs.insert(job_id, accession_number);
     }
+    
+    /// Returns `true` if the specified job ID is a BLT PACS retrieve job.
+    pub fn has_retrieve(&self, id: &JobId) -> bool {
+        self.retrieve_jobs.contains_left(id)
+    }
 }

@@ -250,7 +250,7 @@ impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
 
     /// Obtain the `T` value, converting all errors to [JsonResponseError].
     pub fn into_result(self) -> Result<T, JsonResponseError<T>> {
-        todo!()
+        self.and_then(|x| Ok(x))
     }
 }
 

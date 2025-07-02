@@ -34,6 +34,9 @@ impl ModalitiesClient {
     }
 
     /// Query for a study by AccessionNumber.
+    /// 
+    /// TODO remove this method and add one to search by multiple DICOM tags
+    /// using the builder pattern instead.
     pub fn query_study<M: std::fmt::Display>(
         &self,
         modality: M,
@@ -47,6 +50,7 @@ impl ModalitiesClient {
         let response = self.query_raw(modality, request);
         OrthancQuery::try_new(&self.0, response)
     }
+    
 
     /// Start a C-MOVE SCU command as a job, in order to drive the execution
     /// of a sequence of C-STORE commands by some remote DICOM modality.

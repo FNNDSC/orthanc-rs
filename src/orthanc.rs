@@ -19,4 +19,6 @@ pub mod models;
 pub(crate) mod callback;
 mod helpers;
 pub(crate) mod http;
+mod on_change;
 mod resource_id;
+pub use on_change::{OnChangeEvent, OnChangeThread};
