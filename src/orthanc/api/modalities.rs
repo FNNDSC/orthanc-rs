@@ -19,7 +19,7 @@ impl ModalitiesClient {
     /// List all the DICOM modalities that are known to Orthanc.
     pub fn list_modalities(&self) -> Vec<String> {
         let response = self.0.get("/modalities".to_string());
-        unsafe { response.unwrap() }
+        response.unwrap()
     }
 
     /// Trigger C-FIND SCU command against the DICOM modality

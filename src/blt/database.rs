@@ -1,13 +1,22 @@
 use super::models::{AccessionNumber, BltStudy};
+use crate::orthanc::api::{JobId, QueryId};
+use bimap::BiMap;
 use std::collections::HashMap;
-
 // TODO use ValKey instead of an in-process HashMap, for persistence and scalability
 
 /// In-process and in-memory database of BLT studies being processed by this Orthanc plugin.
 #[derive(Default)]
 pub struct BltDatabase {
     studies: HashMap<AccessionNumber, BltStudy>,
-    queries: HashMap<String, AccessionNumber>,
+    queries: BiMap<QueryId, AccessionNumber>,
+    retrieve_jobs: BiMap<JobId, AccessionNumber>,
+}
+
+#[derive(serde::Serialize)]
+pub struct BltStudyState {
+    info: BltStudy,
+    query_id: QueryId,
+    retrieve_job_id: JobId,
 }
 
 impl BltDatabase {
@@ -15,15 +24,31 @@ impl BltDatabase {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             studies: HashMap::with_capacity(capacity),
-            queries: HashMap::with_capacity(capacity),
+            queries: BiMap::with_capacity(capacity),
+            retrieve_jobs: BiMap::with_capacity(capacity),
         }
     }
 
-    pub fn list_studies(&self) -> Vec<BltStudy> {
-        self.studies.values().map(|s| s.clone()).collect()
+    pub fn list_studies(&self) -> Vec<BltStudyState> {
+        self.studies
+            .values()
+            .map(|s| BltStudyState {
+                info: s.clone(),
+                query_id: self
+                    .queries
+                    .get_by_right(&s.accession_number)
+                    .map(|id| id.clone())
+                    .unwrap(),
+                retrieve_job_id: self
+                    .retrieve_jobs
+                    .get_by_right(&s.accession_number)
+                    .map(|id| id.clone())
+                    .unwrap(),
+            })
+            .collect()
     }
 
-    pub fn add_study(&mut self, study: BltStudy, query_id: String) {
+    pub fn add_study(&mut self, study: BltStudy, query_id: QueryId, job_id: JobId) {
         let accession_number = study.accession_number.clone();
         if self
             .studies
@@ -35,6 +60,7 @@ impl BltDatabase {
                 "BLT study requested twice"
             );
         }
-        self.queries.insert(query_id, accession_number);
+        self.queries.insert(query_id, accession_number.clone());
+        self.retrieve_jobs.insert(job_id, accession_number);
     }
 }

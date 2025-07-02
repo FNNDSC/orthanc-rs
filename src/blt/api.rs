@@ -57,9 +57,12 @@ fn query_and_retrieve(
         e.trace();
         Response::from(e)
     })?;
-    db.add_study(study, query.id.clone()); // TODO ADD JOB TO DB
+    db.add_study(study, query.id.clone(), job.id.clone());
     Ok(Response {
         code: StatusCode::CREATED,
-        body: None,
+        body: Some(serde_json::json!({
+            "QueryID": query.id,
+            "JobID": job.id
+        })),
     })
 }

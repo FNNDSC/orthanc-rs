@@ -1,12 +1,10 @@
-use crate::orthanc::api::answers::Answers;
-use crate::orthanc::api::job::Job;
-use crate::orthanc::api::response::PostJsonResponse;
+use super::answers::Answers;
+use super::response::{JsonResponseError, PostJsonResponse};
+use super::types::{Job, QueryId};
 use crate::orthanc::models::{
     ModalitiesIdQueryPost200Response as MaybeQueryId,
     QueriesIdAnswersIndexRetrievePostRequest as RetrieveRequest,
 };
-
-use super::response::JsonResponseError;
 
 /// The result of a successful query operation, after which you are able to:
 ///
@@ -16,7 +14,7 @@ use super::response::JsonResponseError;
 /// This corresponds to the group of Orthanc API endpoints under
 /// [`/queries/{id}`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}/get).
 pub struct OrthancQuery {
-    pub id: String,
+    pub id: QueryId,
     path: String,
     client: super::client::BaseClient,
 }
@@ -65,14 +63,14 @@ impl OrthancQuery {
 }
 
 /// Get `id` and `path` as required strings.
-fn must_get(value: MaybeQueryId) -> Result<(String, String), (MaybeQueryId, &'static str)> {
+fn must_get(value: MaybeQueryId) -> Result<(QueryId, String), (MaybeQueryId, &'static str)> {
     // needlessly ugly and efficient implementation
     if let Some(id) = value.id {
         match id {
             serde_json::Value::String(id) => {
                 if let Some(path) = value.path {
                     match path {
-                        serde_json::Value::String(path) => Ok((id, path)),
+                        serde_json::Value::String(path) => Ok((QueryId::new(id), path)),
                         other => {
                             let original = MaybeQueryId {
                                 id: Some(serde_json::Value::String(id)),

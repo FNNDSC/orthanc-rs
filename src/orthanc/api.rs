@@ -1,8 +1,9 @@
 mod answers;
 mod client;
-mod job;
 mod modalities;
 mod query;
 mod response;
+mod types;
 
 pub use modalities::ModalitiesClient;
+pub use types::*;
