@@ -32,20 +32,20 @@ fn query_and_retrieve(
     study: BltStudy,
 ) -> Result<Response<serde_json::Value>, Response<serde_json::Value>> {
     let client = crate::orthanc::api::ModalitiesClient::new(context);
-    let modality = client.list_modalities().into_iter().next()
-        .ok_or_else(|| {
-            Response::error("Orthanc is not configured properly with modalities.".to_string())
-        })?;
+    let modality = client.list_modalities().into_iter().next().ok_or_else(|| {
+        Response::error("Orthanc is not configured properly with modalities.".to_string())
+    })?;
 
     let accession_number = study.accession_number.clone().to_string();
-    let query = client.query_study(modality, accession_number).into_result()?;
-    if let Some(i) = query.id.clone() && let serde_json::Value::String(id) = i {
-        db.add_study(study, id);
-    } else {
-        return Err(Response::error("Orthanc returned an invalid query ID".to_string()));
-    };
+    let query = client
+        .query_study(modality, accession_number)
+        .map_err(|e| {
+            e.trace();
+            Response::from(e)
+        })?;
+    db.add_study(study, query.id.clone());
     Ok(Response {
         code: StatusCode::CREATED,
-        body: Some(serde_json::to_value(query).unwrap())
+        body: None,
     })
 }

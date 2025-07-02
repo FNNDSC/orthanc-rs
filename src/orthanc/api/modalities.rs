@@ -3,6 +3,9 @@ use crate::orthanc::bindings;
 use crate::orthanc::models::*;
 use serde_json::json;
 
+use super::query::OrthancQuery;
+use super::response::JsonResponseError;
+
 /// Orthanc client for the networking API.
 ///
 /// Ref: https://orthanc.uclouvain.be/api/#tag/Networking
@@ -21,7 +24,7 @@ impl ModalitiesClient {
 
     /// Trigger C-FIND SCU command against the DICOM modality
     /// (i.e. query PACS for DICOM data).
-    pub fn query<M: std::fmt::Display>(
+    pub fn query_raw<M: std::fmt::Display>(
         &self,
         modality: M,
         request: ModalitiesIdQueryPostRequest,
@@ -35,13 +38,14 @@ impl ModalitiesClient {
         &self,
         modality: M,
         accession_number: String,
-    ) -> PostJsonResponse<ModalitiesIdQueryPost200Response> {
+    ) -> Result<OrthancQuery, JsonResponseError<ModalitiesIdQueryPost200Response>> {
         let request = ModalitiesIdQueryPostRequest {
             level: Some("Study".to_string()),
             query: Some(json!({"AccessionNumber": accession_number})),
             ..Default::default()
         };
-        self.query(modality, request)
+        let response = self.query_raw(modality, request);
+        OrthancQuery::try_new(&self.0, response)
     }
 
     /// Start a C-MOVE SCU command as a job, in order to drive the execution

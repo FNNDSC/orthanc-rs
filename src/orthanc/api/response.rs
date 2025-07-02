@@ -113,72 +113,142 @@ impl<T> PostJsonResponse<T> {
     }
 }
 
-impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
-    /// Return the value as [Ok], and any serialization+deserialization
-    /// errors as [Err] with `code` being [StatusCode::INTERNAL_SERVER_ERROR].
-    pub fn into_result<R: Serialize>(self) -> Result<T, Response<R>> {
-        let res = match self.result {
-            Ok(res) => res,
-            Err(e) => {
+#[derive(thiserror::Error, Debug)]
+#[error("Error calling built-in Orthanc API from plugin at uri={uri}: {kind}")]
+pub struct JsonResponseError<T> {
+    pub uri: String,
+    pub kind: JsonResponseErrorKind<T>,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum JsonResponseErrorKind<T> {
+    #[error("cannot deserialize request body: {0}")]
+    Serialization(serde_json::Error),
+    #[error("cannot deserialize response body: {0}")]
+    Deserialization(serde_json::Error),
+    #[error("no response body")]
+    NoResponse,
+    #[error("unexpected JSON value: {0}")]
+    UnexpectedJson(serde_json::Value),
+    #[error("bad value: {reason} in data {value}")]
+    BadValue { value: T, reason: &'static str },
+}
+
+impl<T: std::fmt::Debug> JsonResponseError<T> {
+    pub fn trace(&self) {
+        match &self.kind {
+            JsonResponseErrorKind::Serialization(kind) => {
                 tracing::error!(
-                    error = e.to_string(),
                     uri = self.uri,
-                    "Could not serialize request"
+                    error = kind.to_string(),
+                    "cannot serialize request body to Orthanc built-in API"
                 );
-                let response = Response {
-                    code: StatusCode::INTERNAL_SERVER_ERROR,
-                    body: None,
-                };
-                return Err(response);
+            }
+            JsonResponseErrorKind::Deserialization(kind) => {
+                tracing::error!(
+                    uri = self.uri,
+                    error = kind.to_string(),
+                    "cannot deserialize response from Orthanc built-in API"
+                );
+            }
+            JsonResponseErrorKind::NoResponse => {
+                tracing::error!(uri = self.uri, "no response body from Orthanc built-in API");
+            }
+            JsonResponseErrorKind::UnexpectedJson(value) => {
+                tracing::error!(
+                    uri = self.uri,
+                    value = value.to_string(),
+                    "unexpected response from Orthanc built-in API"
+                );
+            }
+            JsonResponseErrorKind::BadValue { value, reason } => {
+                tracing::error!(
+                    uri = self.uri,
+                    value = format!("{value:?}"),
+                    "bad value: {reason}"
+                );
             }
         };
-        let maybe = unsafe {
-            match res.data() {
-                Ok(data) => data,
-                Err(e) => {
-                    tracing::error!(
-                        error = e.to_string(),
-                        uri = self.uri,
-                        "Could not deserialize response"
-                    );
-                    let response = Response {
-                        code: StatusCode::INTERNAL_SERVER_ERROR,
-                        body: None,
-                    };
-                    return Err(response);
-                }
-            }
-        };
-        let data = if let Some(data) = maybe {
-            data
-        } else {
-            tracing::error!(uri = self.uri, "No response");
-            let response = Response {
-                code: StatusCode::INTERNAL_SERVER_ERROR,
-                body: None,
-            };
-            return Err(response);
-        };
-        match data {
-            Possibly::Typed(value) => Ok(value),
-            Possibly::Other(e) => {
-                tracing::error!(value = e.to_string(), uri = self.uri, "Unexpected JSON");
-                let response = Response {
-                    code: StatusCode::INTERNAL_SERVER_ERROR,
-                    body: None,
-                };
-                Err(response)
-            }
+    }
+}
+
+impl<T, R: Serialize> From<JsonResponseError<T>> for Response<R> {
+    fn from(_: JsonResponseError<T>) -> Self {
+        Response {
+            code: StatusCode::INTERNAL_SERVER_ERROR,
+            body: None,
         }
     }
-    
-    /// Convenience function which calls [PostJsonResponse::into_result], calling the
-    /// given `f` if the value is [Ok], otherwise returning the [Err] value without
-    /// calling `f`.
-    pub fn map_ok<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<S> {
-        match self.into_result() {
+}
+
+impl<'a, T: Deserialize<'a>> PostJsonResponse<T> {
+    /// Apply the given function after handling all serialization+deserialization errors.
+    ///
+    /// If the given function is to produce [Err], it is to return its parameter along
+    /// with an error message.
+    pub fn and_then<U, F: FnOnce(T) -> Result<U, (T, &'static str)>>(
+        self,
+        f: F,
+    ) -> Result<U, JsonResponseError<T>> {
+        let res = self
+            .result
+            .map_err(JsonResponseErrorKind::Serialization)
+            .map_err(|kind| JsonResponseError {
+                uri: self.uri.clone(),
+                kind,
+            })?;
+        let possibly = unsafe { res.data() }
+            .map_err(JsonResponseErrorKind::Deserialization)
+            .map_err(|kind| JsonResponseError {
+                uri: self.uri.clone(),
+                kind,
+            })?
+            .ok_or_else(|| JsonResponseError {
+                uri: self.uri.clone(),
+                kind: JsonResponseErrorKind::NoResponse,
+            })?;
+        let value = match possibly {
+            Possibly::Typed(value) => value,
+            Possibly::Other(value) => {
+                return Err(JsonResponseError {
+                    uri: self.uri,
+                    kind: JsonResponseErrorKind::UnexpectedJson(value),
+                });
+            }
+        };
+        f(value).map_err(|(value, reason)| JsonResponseError {
+            uri: self.uri,
+            kind: JsonResponseErrorKind::BadValue { value, reason },
+        })
+    }
+
+    /// Obtain the `T` value, converting all errors to [JsonResponseError].
+    pub fn into_result(self) -> Result<T, JsonResponseError<T>> {
+        todo!()
+    }
+}
+
+impl<'a, T: std::fmt::Debug + Deserialize<'a>> PostJsonResponse<T> {
+    /// Return the value as [Ok], and any serialization+deserialization
+    /// errors as [Err] with `code` being [StatusCode::INTERNAL_SERVER_ERROR].
+    /// Additionally, errors are also reported by [JsonResponseError::trace].
+    pub fn into_response_result<R: Serialize>(self) -> Result<T, Response<R>> {
+        self.into_result().map_err(|e| {
+            e.trace();
+            Response {
+                code: StatusCode::INTERNAL_SERVER_ERROR,
+                body: None,
+            }
+        })
+    }
+
+    /// Convenience function which calls [PostJsonResponse::into_response_result],
+    /// calling the given `f` if the value is [Ok], otherwise returning the [Err]
+    /// value without calling `f`.
+    pub fn map_into_response<S: Serialize, F: FnOnce(T) -> Response<S>>(self, f: F) -> Response<S> {
+        match self.into_response_result() {
             Ok(value) => f(value),
-            Err(response) => response
+            Err(response) => response,
         }
     }
 }

@@ -6,6 +6,7 @@ use std::ffi::CString;
 
 /// Safe-rust wrappers for
 /// [`OrthancPluginCallRestApi`](https://orthanc.uclouvain.be/sdk/group__Orthanc.html#gae1588d25e5686eb4d2d6ee7946db2730)
+#[derive(Copy, Clone)]
 pub struct Client {
     context: *mut bindings::OrthancPluginContext,
 }
