@@ -9,7 +9,7 @@ use serde::Deserialize;
 /// The response from `/tools/find` is customized depending on request values e.g.
 /// `{ "Expand": true }`, `{ "ResponseContent": [ "Children" ] }`,
 /// `{ "RequestedTags": [ "PatientName", "PatientID" ] }`, etc...
-/// This trait associates a request type [Into<ToolsFindPostRequest>] with a response type,
+/// This trait associates a request type [ToolsFindPostRequest] with a response type,
 /// providing a statically type-safe method to call `/tools/find`.
 pub trait Find<'a>: Into<ToolsFindPostRequest> {
     type Item: Deserialize<'a>;

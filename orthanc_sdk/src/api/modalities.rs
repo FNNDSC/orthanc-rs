@@ -8,7 +8,7 @@ use super::response::JsonResponseError;
 
 /// Orthanc client for the networking API.
 ///
-/// Ref: https://orthanc.uclouvain.be/api/#tag/Networking
+/// Ref: <https://orthanc.uclouvain.be/api/#tag/Networking>
 pub struct ModalitiesClient(super::client::BaseClient);
 
 impl ModalitiesClient {
@@ -53,7 +53,8 @@ impl ModalitiesClient {
 
     /// Start a C-MOVE SCU command as a job, in order to drive the execution
     /// of a sequence of C-STORE commands by some remote DICOM modality.
-    /// Ref: https://orthanc.uclouvain.be/book/users/rest.html#performing-c-move
+    /// 
+    /// Ref: <https://orthanc.uclouvain.be/book/users/rest.html#performing-c-move>
     pub fn c_move<M: std::fmt::Display>(
         &self,
         modality: M,

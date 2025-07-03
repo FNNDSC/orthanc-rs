@@ -4,7 +4,7 @@ use crate::bindings;
 
 /// Orthanc client for the jobs API.
 ///
-/// Ref: https://orthanc.uclouvain.be/api/#tag/Jobs
+/// Ref: <https://orthanc.uclouvain.be/api/#tag/Jobs>
 pub struct JobsClient(super::client::BaseClient);
 
 impl JobsClient {

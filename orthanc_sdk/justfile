@@ -12,7 +12,14 @@ generate-openapi-client: mkdir-3rdparty
         /openapi-generator.yaml
     mkdir -p src/openapi
     fd --no-ignore-vcs --type f --exact-depth 1 --extension .rs . 3rdparty/client/src/models \
-       --exec sh -c 'grep -vF "use crate::models;" {} > src/openapi/{/}'
+       --exec just -q _process_openapi_file '{}' 'src/openapi/{/}'
+
+# Process an OpenAPI-generated model file: (1) remove unnecessary line `use crate::models;`
+# (2) surround URLs found in doc-comments with angle-brackets, e.g.  `<https://...>`.
+_process_openapi_file src dst:
+    grep -vF "use crate::models;" "{{src}}" \
+    | sed 's#\(///.*: \)\(https://[a-zA-Z0-9\./]*\)#\1<\2>#' \
+    > "{{dst}}"
 
 # Generate Orthanc SDK bindings using bindgen
 generate-bindings: mkdir-3rdparty

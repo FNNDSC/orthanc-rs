@@ -27,7 +27,7 @@ pub struct Job {
 /// Orthanc job detail response from
 /// [`/jobs/{id}`](orthanc.uclouvain.be/api/#tag/Jobs/paths/~1jobs~1{id}/get)
 ///
-/// Ref: https://orthanc.uclouvain.be/hg/orthanc/file/tip/OrthancFramework/Sources/JobsEngine/JobInfo.cpp#l180
+/// Ref: <https://orthanc.uclouvain.be/hg/orthanc/file/tip/OrthancFramework/Sources/JobsEngine/JobInfo.cpp#l180>
 #[derive(serde::Serialize, serde::Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct JobInfo {
@@ -49,7 +49,7 @@ pub struct JobInfo {
 
 /// Orthanc job state.
 ///
-/// https://orthanc.uclouvain.be/book/users/advanced-rest.html#monitoring-jobs
+/// <https://orthanc.uclouvain.be/book/users/advanced-rest.html#monitoring-jobs>
 #[derive(Debug, Serialize, Deserialize, Eq, PartialEq, Copy, Clone, Hash)]
 pub enum JobState {
     /// The job is waiting to be executed.
@@ -73,7 +73,7 @@ pub enum JobState {
 ///
 /// **WARNING**: Only [JobContent::DicomMoveScu] is implemented.
 ///
-/// Job type ref: <https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66
+/// Job type ref: <https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66>
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "Type", content = "Content")]
 pub enum JobContent {
