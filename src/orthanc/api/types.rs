@@ -14,6 +14,7 @@ pub struct JobId(String);
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Hash)]
 #[serde(rename_all = "PascalCase")]
 pub struct Job {
+    #[serde(rename = "ID")]
     pub id: JobId,
     pub path: String,
 }
@@ -129,6 +130,50 @@ impl MoveScuJobQuery {
                 study_instance_uid, ..
             } => Some(study_instance_uid),
             MoveScuJobQuery::Patient { .. } => None,
+        }
+    }
+}
+
+/// Same data as [MoveScuJobQuery] but as a struct with [Option]
+/// fields instead of being an `enum`.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct MoveScuJobQueryAny {
+    pub patient_id: KString,
+    pub accession_number: Option<KString>,
+    pub study_instance_uid: Option<String>,
+    pub series_instance_uid: Option<String>,
+}
+
+impl From<MoveScuJobQuery> for MoveScuJobQueryAny {
+    fn from(value: MoveScuJobQuery) -> Self {
+        match value {
+            MoveScuJobQuery::Series {
+                patient_id,
+                accession_number,
+                study_instance_uid,
+                series_instance_uid,
+            } => Self {
+                patient_id,
+                accession_number: Some(accession_number),
+                study_instance_uid: Some(study_instance_uid),
+                series_instance_uid: Some(series_instance_uid),
+            },
+            MoveScuJobQuery::Study {
+                patient_id,
+                accession_number,
+                study_instance_uid,
+            } => Self {
+                patient_id,
+                accession_number: Some(accession_number),
+                study_instance_uid: Some(study_instance_uid),
+                series_instance_uid: None,
+            },
+            MoveScuJobQuery::Patient { patient_id } => Self {
+                patient_id,
+                accession_number: None,
+                study_instance_uid: None,
+                series_instance_uid: None,
+            },
         }
     }
 }

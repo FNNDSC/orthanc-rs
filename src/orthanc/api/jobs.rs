@@ -1,7 +1,6 @@
 use crate::orthanc::api::response::RestResponse;
 use crate::orthanc::api::{JobId, JobInfo};
 use crate::orthanc::bindings;
-use serde::Deserialize;
 
 /// Orthanc client for the jobs API.
 ///

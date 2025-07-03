@@ -16,21 +16,13 @@ test-run:
 # Rebuild plugin and restart Orthanc
 restart:
     cargo build
-    if docker compose ps --status=exited --format '{{ "{{" }}.Name }}' | grep -q 'dev-1$'; then \
-      docker compose restart dev; \
-    else \
-      curl -sSf -X POST http://localhost:8042/tools/reset; \
-    fi
+    docker compose restart dev
 
 # Delete all patients from Orthanc
 reset:
     for api in patients jobs queries; do \
       xh :8042/$api | jaq -r '.[]' | xargs -I _ xh DELETE :8042/$api/_ ; \
     done
-
-# Delete a patient fom Orthanc
-delete-patient uuid:
-    xh DELETE :8042/patients/{{uuid}}
 
 # Generate required Rust code
 codegen: generate-bindings generate-openapi-client

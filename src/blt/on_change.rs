@@ -1,5 +1,8 @@
 use crate::blt::BltDatabase;
-use crate::orthanc::api::{JobContent, JobId, JobState, JobsClient, JsonResponseError};
+use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
+use crate::orthanc::api::{
+    Find, JobContent, JobId, JobInfo, JobState, JobsClient, MoveScuJobQueryAny,
+};
 use crate::orthanc::{OnChangeEvent, bindings};
 
 pub fn on_change(
@@ -35,13 +38,19 @@ fn on_job_success(
         e.trace();
     })?;
     assert_eq!(job.state, JobState::Success);
+    let study = get_series_of_retrieve_job(context, job)?;
+    Ok(())
+}
+
+fn get_series_of_retrieve_job(
+    context: *mut bindings::OrthancPluginContext,
+    job: JobInfo,
+) -> Result<Vec<SeriesOfStudy>, ()> {
     let study_instance_uid = if let JobContent::DicomMoveScu { query, .. } = job.content
-        && let Some(study_instance_uid) = query.first().and_then(|q| q.study_instance_uid())
+        && let Some(query) = query.into_iter().next().map(MoveScuJobQueryAny::from)
+        && let Some(study_instance_uid) = query.study_instance_uid
     {
-        tracing::info!(
-            StudyInstanceUID = study_instance_uid,
-            "I should now filter, anonymize, and push this."
-        );
+        study_instance_uid
     } else {
         tracing::error!(
             job = job.id,
@@ -49,8 +58,10 @@ fn on_job_success(
         );
         return Err(());
     };
-
-    Ok(())
+    let request = FindSeriesByStudy(study_instance_uid);
+    request.find(context).into_result().map_err(|e| {
+        e.trace();
+    })
 }
 
 fn filter_received_series(context: *mut bindings::OrthancPluginContext) {

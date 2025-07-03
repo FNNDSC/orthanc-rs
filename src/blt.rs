@@ -12,6 +12,7 @@ mod database;
 mod dicom_date;
 mod models;
 mod on_change;
+mod series_of_study;
 
 pub use api::route_http_request;
 pub use database::BltDatabase;

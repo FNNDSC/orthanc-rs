@@ -54,6 +54,7 @@ fn query_and_retrieve(
         });
     }
     let job = query.request_retrieve_job().into_result().map_err(|e| {
+        tracing::error!("i am here");
         e.trace();
         Response::from(e)
     })?;
