@@ -4,8 +4,7 @@ use crate::helpers::{create_empty_buffer, invoke_service};
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 
-/// Safe-rust wrappers for
-/// [`OrthancPluginCallRestApi`](https://orthanc.uclouvain.be/sdk/group__Orthanc.html#gae1588d25e5686eb4d2d6ee7946db2730)
+/// Methods for calling the built-in API of Orthanc from a plugin.
 #[derive(Copy, Clone)]
 pub struct BaseClient {
     context: *mut bindings::OrthancPluginContext,
@@ -34,6 +33,25 @@ impl BaseClient {
             params,
         );
         RestResponse::new(context, uri, code, target)
+    }
+
+    /// Make a DELETE call to the built-in Orthanc REST API.
+    ///
+    /// Wrapper for [`OrthancPluginRestApiDelete`](https://orthanc.uclouvain.be/sdk/group__Orthanc.html#gadd36e54c43f6371c59301b8b257e3eee)
+    pub fn delete(&self, uri: String) -> bindings::OrthancPluginErrorCode {
+        let context = self.context;
+        let c_uri = CString::new(uri.as_str()).unwrap();
+        invoke_service(
+            context,
+            bindings::_OrthancPluginService__OrthancPluginService_RestApiDelete,
+            c_uri.as_ptr(),
+        )
+    }
+
+    /// Make a DELETE call to the built-in Orthanc REST API and get its JSON response.
+    pub fn delete_with_response<'a, D: Deserialize<'a>>(&self, uri: String) -> RestResponse<D> {
+        let _ = uri; // TODO OrthancPluginCallRestApi
+        todo!()
     }
 
     /// Make a POST call to the built-in Orthanc REST API.

@@ -53,7 +53,7 @@ impl ModalitiesClient {
 
     /// Start a C-MOVE SCU command as a job, in order to drive the execution
     /// of a sequence of C-STORE commands by some remote DICOM modality.
-    /// 
+    ///
     /// Ref: <https://orthanc.uclouvain.be/book/users/rest.html#performing-c-move>
     pub fn c_move<M: std::fmt::Display>(
         &self,

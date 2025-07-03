@@ -1,10 +1,10 @@
 //! Type definitions to use the [crate::lib::api::Find] trait to search for the
 //! ID of series for each study by StudyInstanceUID.
 
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 use orthanc_sdk::api::Find;
 use orthanc_sdk::openapi::ToolsFindPostRequest;
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 /// List of series for a study.
 #[derive(Serialize, Deserialize, Clone, Debug)]

@@ -2,16 +2,15 @@
 
 mod answers;
 mod client;
+mod dicom;
 mod find;
-mod jobs;
 mod modalities;
 mod query;
 mod response;
 
 pub mod types;
 
+pub use dicom::DicomClient;
 pub use find::Find;
-pub use jobs::JobsClient;
 pub use modalities::ModalitiesClient;
 pub use response::*;
-

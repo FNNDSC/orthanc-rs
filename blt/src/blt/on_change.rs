@@ -1,8 +1,10 @@
-use orthanc_sdk::{bindings, on_change::OnChangeEvent};
-use orthanc_sdk::api::{Find, JobsClient};
-use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny};
 use crate::blt::BltDatabase;
 use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
+use orthanc_sdk::api::Find;
+use orthanc_sdk::api::types::{
+    JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, ResourceId,
+};
+use orthanc_sdk::{bindings, on_change::OnChangeEvent};
 
 pub fn on_change(
     context: *mut bindings::OrthancPluginContext,
@@ -33,7 +35,7 @@ fn on_job_success(
     if !db.has_retrieve(&id) {
         return Ok(());
     }
-    let job = JobsClient::new(context).get(id).data().map_err(|e| {
+    let job = id.get(context).data().map_err(|e| {
         e.trace();
     })?;
     assert_eq!(job.state, JobState::Success);

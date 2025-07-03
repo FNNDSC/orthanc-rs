@@ -1,7 +1,7 @@
 use super::models::{AccessionNumber, BltStudy};
 use bimap::BiMap;
-use std::collections::HashMap;
 use orthanc_sdk::api::types::{JobId, QueryId};
+use std::collections::HashMap;
 
 // TODO use ValKey instead of an in-process HashMap, for persistence and scalability
 
