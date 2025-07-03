@@ -6,6 +6,13 @@ up:
 down:
     docker compose down -v
 
+# Start a test run for the SAG-ANON dataset
+test-run:
+    xh :8042/blt/studies MRN=1449c1d Anon_PatientID=BCH01 PatientName=anonymized \
+                         Anon_PatientName=BCH01 PatientBirthDate=01/07/2009 \
+                         Search_AccessionNumber=98edede8b2 Anon_AccessionNumber=bch01-visit1 \
+                         Anon_PatientBirthDate=19010101
+
 # Rebuild plugin and restart Orthanc
 restart:
     cargo build
@@ -53,10 +60,18 @@ mkdir-3rdparty:
 
 # Push a directory of DICOM files to PACS.
 store dir:
-    fd --type f --extension '.dcm' . '{{dir}}' \
-        | rust-parallel --progress-bar --jobs 2 --discard-output=all just store-straight
+    @just _upload_all /modalities/PACS/store-straight "{{dir}}"
 
-# Upload one DICOM file to PACS.
-store-straight file:
+# Upload a directory of DICOM files to DEV.
+upload dir:
+    @just _upload_all /instances "{{dir}}"
+
+# Upload a directory of DICOM files to
+_upload_all api_path dir:
+    fd --type f --extension '.dcm' . '{{dir}}' \
+        | rust-parallel --progress-bar --jobs 2 --discard-output=all just _upload_instance "{{api_path}}"
+
+# Upload a DICOM file to the specified API endpoint.
+_upload_instance api_path file:
     curl -sSfX POST -H 'Expect:' -H 'Content-Type: application/dicom' -T '{{file}}' -o /dev/null \
-         http://localhost:8042/modalities/PACS/store-straight
+         "http://localhost:8042{{api_path}}"
