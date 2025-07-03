@@ -1,9 +1,10 @@
-//! The documentation for [OrthancPluginRegisterOnChangeCallback](https://orthanc.uclouvain.be/sdk/group__Callbacks.html#ga78140887a94f1afb067a15db5ee4099c)
-//! recommends handling events in a separate thread. This module helps with that.
+//! Helpers for implementing [OrthancPluginRegisterOnChangeCallback](https://orthanc.uclouvain.be/sdk/group__Callbacks.html#ga78140887a94f1afb067a15db5ee4099c).
+//! 
+//! The upstream documentation recommends handling events in a separate thread. This module helps with that.
 //!
 //! Future work: thread pool, async runtime, ...
 
-use crate::orthanc::bindings;
+use crate::bindings;
 use std::sync::mpsc::{SendError, Sender};
 use std::thread::JoinHandle;
 

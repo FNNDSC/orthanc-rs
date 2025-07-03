@@ -1,7 +1,8 @@
 use super::models::{AccessionNumber, BltStudy};
-use crate::orthanc::api::{JobId, QueryId};
 use bimap::BiMap;
 use std::collections::HashMap;
+use orthanc_sdk::api::types::{JobId, QueryId};
+
 // TODO use ValKey instead of an in-process HashMap, for persistence and scalability
 
 /// In-process and in-memory database of BLT studies being processed by this Orthanc plugin.

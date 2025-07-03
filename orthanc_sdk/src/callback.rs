@@ -1,14 +1,14 @@
 //! Orthanc plugin initialization callback registration functions.
 
-use super::bindings;
-use super::helpers::must_invoke_service;
-use super::http::{Request, Response};
+use crate::bindings;
+use crate::helpers::must_invoke_service;
+use crate::http::{Request, Response};
 use http::StatusCode;
 use std::ffi::CString;
 use std::str::FromStr;
 
 /// Translated from `OrthancPluginRegisterOnChangeCallback`.
-pub(crate) fn register_on_change(
+pub fn register_on_change(
     context: *mut bindings::OrthancPluginContext,
     callback: bindings::OrthancPluginOnChangeCallback,
 ) {
@@ -61,7 +61,7 @@ pub fn register_rest_no_lock(
 }
 
 /// Create an Orthanc REST callback that uses JSON in its request and response bodies.
-pub(crate) fn create_json_rest_callback<
+pub fn create_json_rest_callback<
     'a,
     S: serde::Serialize,
     D: serde::Deserialize<'a>,

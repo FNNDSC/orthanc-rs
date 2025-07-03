@@ -1,6 +1,6 @@
-use crate::orthanc::api::response::RestResponse;
-use crate::orthanc::api::{JobId, JobInfo};
-use crate::orthanc::bindings;
+use super::response::RestResponse;
+use super::types::{JobId, JobInfo};
+use crate::bindings;
 
 /// Orthanc client for the jobs API.
 ///

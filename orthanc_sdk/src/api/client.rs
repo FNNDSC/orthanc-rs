@@ -1,6 +1,6 @@
-use crate::orthanc::api::response::{PostJsonResponse, RestResponse};
-use crate::orthanc::bindings;
-use crate::orthanc::helpers::{create_empty_buffer, invoke_service};
+use super::response::{PostJsonResponse, RestResponse};
+use crate::bindings;
+use crate::helpers::{create_empty_buffer, invoke_service};
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 

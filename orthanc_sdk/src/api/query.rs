@@ -1,7 +1,7 @@
 use super::answers::Answers;
 use super::response::{JsonResponseError, PostJsonResponse};
 use super::types::{Job, QueryId};
-use crate::orthanc::models::{
+use crate::openapi::{
     ModalitiesIdQueryPost200Response as MaybeQueryId,
     QueriesIdAnswersIndexRetrievePostRequest as RetrieveRequest,
 };

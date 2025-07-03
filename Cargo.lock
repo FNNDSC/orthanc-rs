@@ -18,6 +18,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "230c5f1ca6a325a32553f8640d31ac9b49f2411e901e427570154868b46da4f7"
 
 [[package]]
+name = "blt"
+version = "0.1.0"
+dependencies = [
+ "bimap",
+ "http",
+ "kstring",
+ "nutype",
+ "orthanc_sdk",
+ "rstest",
+ "serde",
+ "serde_json",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "bytes"
 version = "1.10.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -132,23 +148,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32a282da65faaf38286cf3be983213fcf1d2e2a58700e808f83f4ea9a4804bc0"
 
 [[package]]
-name = "neochris_orthanc_plugin"
-version = "0.1.0"
-dependencies = [
- "bimap",
- "http",
- "kstring",
- "nutype",
- "pretty_assertions",
- "rstest",
- "serde",
- "serde_json",
- "thiserror",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "nu-ansi-term"
 version = "0.46.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -187,6 +186,20 @@ name = "once_cell"
 version = "1.21.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "42f5e15c9953c5e4ccceeb2e7382a716482c34515315f7b03532b8b4e8393d2d"
+
+[[package]]
+name = "orthanc_sdk"
+version = "0.1.0"
+dependencies = [
+ "http",
+ "kstring",
+ "nutype",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tracing",
+]
 
 [[package]]
 name = "overload"

@@ -1,8 +1,8 @@
 use super::database::BltDatabase;
 use super::models::BltStudy;
-use crate::orthanc::bindings::OrthancPluginContext;
-use crate::orthanc::http::{Method, Request, Response};
 use http::StatusCode;
+use orthanc_sdk::bindings::OrthancPluginContext;
+use orthanc_sdk::http::{Method, Request, Response};
 
 /// - On `GET`: return list of BLT studies.
 /// - On `POST`: query for the study by AccessionNumber in the first modality
@@ -31,7 +31,7 @@ fn query_and_retrieve(
     db: &mut BltDatabase,
     study: BltStudy,
 ) -> Result<Response<serde_json::Value>, Response<serde_json::Value>> {
-    let client = crate::orthanc::api::ModalitiesClient::new(context);
+    let client = orthanc_sdk::api::ModalitiesClient::new(context);
     let modality = client.list_modalities().into_iter().next().ok_or_else(|| {
         Response::error("Orthanc is not configured properly with modalities.".to_string())
     })?;

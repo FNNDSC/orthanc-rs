@@ -1,3 +1,8 @@
+//! Orthanc API response types.
+//!
+//! (These type definitions are handwritten with better ergonomics
+//! than the automatically generated ones found in [crate::openapi]).
+
 use kstring::KString;
 use nutype::nutype;
 use serde::{Deserialize, Serialize};
@@ -68,7 +73,7 @@ pub enum JobState {
 ///
 /// **WARNING**: Only [JobContent::DicomMoveScu] is implemented.
 ///
-/// Job type ref: https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66
+/// Job type ref: <https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "Type", content = "Content")]
 pub enum JobContent {

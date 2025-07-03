@@ -1,4 +1,4 @@
-use super::bindings;
+use crate::bindings;
 
 /// Translation of the C code which appears as the last line of most functions in `OrthancCPlugin.h`,
 /// e.g. https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3056

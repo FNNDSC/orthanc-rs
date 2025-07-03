@@ -1,6 +1,6 @@
-use crate::orthanc::api::response::PostJsonResponse;
-use crate::orthanc::bindings;
-use crate::orthanc::models::*;
+use super::response::PostJsonResponse;
+use crate::bindings;
+use crate::openapi::*;
 use serde_json::json;
 
 use super::query::OrthancQuery;

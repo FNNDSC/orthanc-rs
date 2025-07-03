@@ -1,6 +1,6 @@
-use crate::orthanc::api::{PostJsonResponse, client::BaseClient};
-use crate::orthanc::bindings::OrthancPluginContext;
-use crate::orthanc::models::ToolsFindPostRequest;
+use super::{PostJsonResponse, client::BaseClient};
+use crate::bindings::OrthancPluginContext;
+use crate::openapi::ToolsFindPostRequest;
 use serde::Deserialize;
 
 /// A trait for making requests to

@@ -96,7 +96,7 @@ impl<'a, D: serde::Deserialize<'a>> Request<'a, D> {
 
 /// HTTP method
 #[derive(Copy, Clone, Eq, PartialEq, Debug)]
-pub(crate) enum Method {
+pub enum Method {
     /// HTTP GET method
     Get,
     /// HTTP POST method

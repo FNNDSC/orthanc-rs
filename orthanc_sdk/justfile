@@ -1,0 +1,26 @@
+# Generate required Rust code
+codegen: generate-bindings generate-openapi-client
+
+# Generate Orthanc model files using OpenAPI
+generate-openapi-client: mkdir-3rdparty
+    wget -O 3rdparty/orthanc-openapi.json 'https://orthanc.uclouvain.be/api/orthanc-openapi.json'
+    podman run --rm --userns=keep-id:uid=100100,gid=100100 -u 100100:100100 \
+        -v "$PWD/3rdparty:/3rdparty" -w /3rdparty \
+        -v "$PWD/openapi-generator.yaml:/openapi-generator.yaml:ro" \
+        docker.io/openapitools/openapi-generator-cli:v7.14.0 \
+        batch --clean --fail-fast --root-dir /3rdparty  \
+        /openapi-generator.yaml
+    mkdir -p src/openapi
+    fd --no-ignore-vcs --type f --exact-depth 1 --extension .rs . 3rdparty/client/src/models \
+       --exec sh -c 'grep -vF "use crate::models;" {} > src/openapi/{/}'
+
+# Generate Orthanc SDK bindings using bindgen
+generate-bindings: mkdir-3rdparty
+    wget -O 3rdparty/OrthancCPlugin.h 'https://orthanc.uclouvain.be/hg/orthanc/raw-file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h'
+    bindgen 3rdparty/OrthancCPlugin.h -o src/bindings.rs
+
+# Create 3rdparty directory
+mkdir-3rdparty:
+    mkdir -p 3rdparty
+    echo '*' > 3rdparty/.gitignore
+

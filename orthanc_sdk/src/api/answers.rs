@@ -1,5 +1,5 @@
 use super::client::BaseClient;
-use crate::orthanc::api::response::JsonResponseError;
+use super::response::JsonResponseError;
 use kstring::KString;
 use std::collections::HashMap;
 

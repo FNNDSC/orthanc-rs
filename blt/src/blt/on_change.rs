@@ -1,9 +1,8 @@
+use orthanc_sdk::{bindings, on_change::OnChangeEvent};
+use orthanc_sdk::api::{Find, JobsClient};
+use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny};
 use crate::blt::BltDatabase;
 use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
-use crate::orthanc::api::{
-    Find, JobContent, JobId, JobInfo, JobState, JobsClient, MoveScuJobQueryAny,
-};
-use crate::orthanc::{OnChangeEvent, bindings};
 
 pub fn on_change(
     context: *mut bindings::OrthancPluginContext,

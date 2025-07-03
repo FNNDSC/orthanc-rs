@@ -1,8 +1,9 @@
 #![allow(non_snake_case)]
 
 use crate::blt::BltDatabase;
-use crate::orthanc::callback::{create_json_rest_callback, register_on_change, register_rest};
-use crate::orthanc::{OnChangeEvent, OnChangeThread, bindings};
+use orthanc_sdk::bindings;
+use orthanc_sdk::callback::{create_json_rest_callback, register_on_change, register_rest};
+use orthanc_sdk::on_change::{OnChangeEvent, OnChangeThread};
 use std::sync::{Mutex, RwLock};
 
 static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {
@@ -120,7 +121,7 @@ extern "C" fn rest_callback(
         tracing::error!("Failed to read GLOBAL_STATE");
         return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
     };
-    let mut db_mutex = if let Ok(mut db_mutex) = DATABASE.lock() {
+    let mut db_mutex = if let Ok(db_mutex) = DATABASE.lock() {
         db_mutex
     } else {
         tracing::error!("Failed to lock database mutex, did a background thread panic?");

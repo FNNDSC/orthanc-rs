@@ -1,6 +1,6 @@
-use crate::orthanc::bindings;
-use crate::orthanc::helpers::free_memory_buffer;
-use crate::orthanc::http::Response;
+use crate::bindings;
+use crate::helpers::free_memory_buffer;
+use crate::http::Response;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;
