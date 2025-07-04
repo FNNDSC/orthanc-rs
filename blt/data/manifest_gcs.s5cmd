@@ -1,0 +1,6 @@
+# To obtain these images, install s5cmd (https://github.com/peak/s5cmd),
+# then run the following command:
+# s5cmd --no-sign-request --endpoint-url https://storage.googleapis.com run <manifest file name>
+cp s3://idc-open-data/655246e9-0e88-4dc3-bcef-654ee23d5826/* .
+cp s3://idc-open-data/a8c49be3-a37f-4fcb-877f-33a1c7646f45/* .
+cp s3://idc-open-data/3cdb5ed2-afeb-4a29-9d51-bcb40ac7edf6/* .

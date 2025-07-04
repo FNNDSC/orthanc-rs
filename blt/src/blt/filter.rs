@@ -7,7 +7,6 @@ pub(crate) fn filter_received_series(
     context: *mut OrthancPluginContext,
     series: &[SeriesId],
 ) -> TraceAndReturn {
-    // TODO Sandip excludes series with: {"SOPClassUID": "Secondary Capture Image Storage"}
     let client = DicomClient::new(context);
     for series_id in series {
         let details: Series<SeriesDetails> = client.get(series_id).data()?;
@@ -40,5 +39,12 @@ struct SeriesDetails {
 impl RequestedTags for SeriesDetails {
     fn names() -> &'static [&'static str] {
         &["Modality", "SOPClassUID"]
+    }
+}
+
+impl SeriesDetails {
+    fn should_delete(&self) -> bool {
+        // TODO Sandip excludes series with: {"SOPClassUID": "Secondary Capture Image Storage"}
+        self.modality != "MR"
     }
 }
