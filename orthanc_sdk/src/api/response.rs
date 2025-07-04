@@ -160,6 +160,7 @@ impl<T> JsonResponseError<T> {
 }
 
 impl<T: std::fmt::Debug> JsonResponseError<T> {
+    /// Report this error with [tracing::error].
     pub fn trace(&self) {
         match &self.kind {
             JsonResponseErrorKind::Serialization(kind) => {

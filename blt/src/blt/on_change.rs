@@ -1,17 +1,18 @@
 use crate::blt::BltDatabase;
+use crate::blt::error::{DoNothing, TraceAndReturn};
+use crate::blt::filter::filter_received_series;
 use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
 use orthanc_sdk::api::Find;
-use orthanc_sdk::api::types::{
-    JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, ResourceId,
-};
+use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, StudyId, SystemResourceId};
+use orthanc_sdk::bindings::OrthancPluginContext;
 use orthanc_sdk::{bindings, on_change::OnChangeEvent};
 
 pub fn on_change(
-    context: *mut bindings::OrthancPluginContext,
+    context: *mut OrthancPluginContext,
     db: &mut BltDatabase,
     OnChangeEvent {
         change_type,
-        resource_type,
+        resource_type: _resource_type,
         resource_id,
     }: OnChangeEvent,
 ) {
@@ -28,25 +29,26 @@ pub fn on_change(
 }
 
 fn on_job_success(
-    context: *mut bindings::OrthancPluginContext,
+    context: *mut OrthancPluginContext,
     db: &mut BltDatabase,
     id: JobId,
-) -> Result<(), ()> {
+) -> TraceAndReturn {
     if !db.has_retrieve(&id) {
         return Ok(());
     }
-    let job = id.get(context).data().map_err(|e| {
-        e.trace();
-    })?;
+    let job = id.get(context).data()?;
     assert_eq!(job.state, JobState::Success);
-    let study = get_series_of_retrieve_job(context, job)?;
+    for study in get_series_of_retrieve_job(context, job)? {
+        filter_received_series(context, &study.series)?;
+        anonymize_study(context, study.id);
+    }
     Ok(())
 }
 
 fn get_series_of_retrieve_job(
-    context: *mut bindings::OrthancPluginContext,
+    context: *mut OrthancPluginContext,
     job: JobInfo,
-) -> Result<Vec<SeriesOfStudy>, ()> {
+) -> Result<Vec<SeriesOfStudy>, DoNothing> {
     let study_instance_uid = if let JobContent::DicomMoveScu { query, .. } = job.content
         && let Some(query) = query.into_iter().next().map(MoveScuJobQueryAny::from)
         && let Some(study_instance_uid) = query.study_instance_uid
@@ -57,15 +59,17 @@ fn get_series_of_retrieve_job(
             job = job.id,
             "job was not a DicomMoveScu operation with StudyInstanceUID in its content"
         );
-        return Err(());
+        return Err(DoNothing);
     };
     let request = FindSeriesByStudy(study_instance_uid);
-    request.find(context).into_result().map_err(|e| {
-        e.trace();
-    })
+    let data = request.find(context).into_result()?;
+    Ok(data)
 }
 
-fn filter_received_series(context: *mut bindings::OrthancPluginContext) {
-    // TODO Sandip excludes series with: {"SOPClassUID": "Secondary Capture Image Storage"}
-    todo!()
+fn anonymize_study(context: *mut OrthancPluginContext, study: StudyId) {
+    let _ = context; // TODO
+    tracing::info!(
+        study = study.to_string(),
+        "I should anonymize this study now"
+    );
 }

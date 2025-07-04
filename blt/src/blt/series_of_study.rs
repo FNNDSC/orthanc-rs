@@ -2,6 +2,7 @@
 //! ID of series for each study by StudyInstanceUID.
 
 use orthanc_sdk::api::Find;
+use orthanc_sdk::api::types::{SeriesId, StudyId};
 use orthanc_sdk::openapi::ToolsFindPostRequest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -12,9 +13,9 @@ use serde_json::json;
 pub(crate) struct SeriesOfStudy {
     /// Study ID
     #[serde(rename = "ID")]
-    id: String,
+    pub id: StudyId,
     /// Series IDs
-    series: Vec<String>,
+    pub series: Vec<SeriesId>,
 }
 
 /// A request to find series of a study by StudyInstanceUID.

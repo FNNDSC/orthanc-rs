@@ -1,4 +1,4 @@
-use crate::api::types::job::JobInfo;
+use super::{dicom::*, job::JobInfo};
 use crate::api::{RestResponse, client::BaseClient};
 use crate::bindings::{OrthancPluginContext, OrthancPluginErrorCode};
 use kstring::KString;
@@ -9,81 +9,100 @@ use serde::{Deserialize, Serialize};
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct QueryId(String);
 
-impl ResourceId<'_> for QueryId {
-    /// `/queries/{id}` always responds with `["answers", "level", "modality", "query", "retrieve"]`
-    type Item = Vec<KString>;
-
+impl ResourceId for QueryId {
     fn uri(&self) -> String {
         format!("/queries/{}", &self)
     }
+}
+
+impl SystemResourceId<'_> for QueryId {
+    // note: `/queries/{id}` always responds with `["answers", "level", "modality", "query", "retrieve"]`
+    type Item = Vec<KString>;
 }
 
 /// ID of an Orthanc job.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct JobId(String);
 
-impl ResourceId<'_> for JobId {
-    type Item = JobInfo;
-
+impl ResourceId for JobId {
     fn uri(&self) -> String {
         format!("/jobs/{}", &self)
     }
+}
+
+impl SystemResourceId<'_> for JobId {
+    type Item = JobInfo;
 }
 
 /// ID of a patient in Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct PatientId(String);
 
-impl ResourceId<'_> for PatientId {
-    type Item = (); // TODO
-
+impl ResourceId for PatientId {
     fn uri(&self) -> String {
         format!("/patients/{}", &self)
     }
+}
+
+impl<'a, T> DicomResourceId<'_, T> for PatientId {
+    type Item = Patient<T>;
+    type Ancestor = PatientId;
 }
 
 /// ID of a DICOM study stored by Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct StudyId(String);
 
-impl ResourceId<'_> for StudyId {
-    type Item = (); // TODO
-
+impl ResourceId for StudyId {
     fn uri(&self) -> String {
         format!("/studies/{}", &self)
     }
+}
+
+impl<'a, T> DicomResourceId<'_, T> for StudyId {
+    type Item = Study<T>;
+    type Ancestor = PatientId;
 }
 
 /// ID of a DICOM series stored by Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct SeriesId(String);
 
-impl ResourceId<'_> for SeriesId {
-    type Item = (); // TODO
-
+impl ResourceId for SeriesId {
     fn uri(&self) -> String {
         format!("/series/{}", &self)
     }
+}
+
+impl<'a, T> DicomResourceId<'a, T> for SeriesId {
+    type Item = Series<T>;
+    type Ancestor = StudyId;
 }
 
 /// ID of a DICOM instance stored by Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct InstanceId(String);
 
-impl ResourceId<'_> for InstanceId {
-    type Item = (); // TODO
-
+impl ResourceId for InstanceId {
     fn uri(&self) -> String {
         format!("/instances/{}", &self)
     }
 }
 
-/// ID of an Orthanc resource.
-pub trait ResourceId<'a> {
-    type Item: Deserialize<'a>;
+impl<'a, T> DicomResourceId<'a, T> for InstanceId {
+    type Item = Instance<T>;
+    type Ancestor = SeriesId;
+}
 
+/// ID of an Orthanc resource.
+pub trait ResourceId {
     /// Get the API URI of this resource.
     fn uri(&self) -> String;
+}
+
+/// ID of an Orthanc system (i.e. not DICOM data) resource, e.g. job, query.
+pub trait SystemResourceId<'a>: ResourceId {
+    type Item: Deserialize<'a>;
 
     /// Get this resource.
     fn get(&self, context: *mut OrthancPluginContext) -> RestResponse<Self::Item> {
@@ -100,8 +119,22 @@ pub trait ResourceId<'a> {
     }
 }
 
-pub trait DicomResourceId<'a>: ResourceId<'a> + Deserialize<'a> {
-    type Ancestor: DicomResourceId<'a>;
+/// ID of an Orthanc DICOM resource, e.g. patient, study, series, instance.
+pub trait DicomResourceId<'a, T>: ResourceId + Deserialize<'a> {
+    type Item: DicomResource<T>;
+    type Ancestor: DicomResourceId<'a, T>;
+
+    /// Get this resource.
+    fn get(&self, context: *mut OrthancPluginContext) -> RestResponse<Self::Item>
+    where
+        Self::Item: Deserialize<'a>,
+        T: RequestedTags,
+    {
+        let client = BaseClient::new(context);
+        let requested_tags = T::names().join(";");
+        let uri = format!("{}?requested-tags={}", self.uri(), requested_tags);
+        client.get(uri)
+    }
 
     /// Delete this DICOM resource.
     fn delete(
@@ -112,6 +145,13 @@ pub trait DicomResourceId<'a>: ResourceId<'a> + Deserialize<'a> {
         let uri = self.uri();
         client.delete_with_response(uri)
     }
+}
+
+/// A type for the "RequestedDicomTags" field in Orthanc's JSON response to
+/// getting a DICOM patient, study, series, or instance.
+pub trait RequestedTags {
+    /// DICOM tag names of this type.
+    fn names() -> &'static [&'static str];
 }
 
 /// Response from deleting a DICOM resource from Orthanc.

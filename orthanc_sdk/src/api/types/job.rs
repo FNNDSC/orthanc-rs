@@ -71,6 +71,7 @@ pub enum JobContent {
     StorageCommitmentScp,
 }
 
+/// The query of a MOVE-SCU job.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "0008,0052")]
 pub enum MoveScuJobQuery {
@@ -160,6 +161,7 @@ impl From<MoveScuJobQuery> for MoveScuJobQueryAny {
     }
 }
 
+/// DICOM level of a query or retrieve operation.
 #[derive(Serialize, Deserialize, Debug, Copy, Clone, Eq, PartialEq, Hash)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum QueryRetrieveLevel {
