@@ -27,4 +27,4 @@ pub(crate) struct BltStudy {
     derive(Serialize, Deserialize, Clone, Hash, Eq, PartialEq, AsRef, Deref),
     validate(predicate = |s| !s.is_empty())
 )]
-pub struct AccessionNumber(kstring::KString);
+pub struct AccessionNumber(compact_str::CompactString);

@@ -1,4 +1,4 @@
-use crate::api::types::{InstanceId, PatientId, SeriesId, StudyId};
+use crate::types::{InstanceId, PatientId, SeriesId, StudyId};
 use serde::{Deserialize, Serialize};
 
 /// Orthanc patient detail response from
@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 pub struct Patient<T> {
     #[serde(rename = "ID")]
     pub id: PatientId,
+
     pub requested_tags: T,
 }
 

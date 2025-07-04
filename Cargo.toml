@@ -3,6 +3,6 @@
 resolver = "2"
 
 members = [
-    "blt",
+    "blt", "orthanc_api",
     "orthanc_sdk"
 ]

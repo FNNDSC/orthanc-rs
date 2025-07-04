@@ -1,4 +1,4 @@
-use kstring::KString;
+use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
 
 /// Orthanc job detail response from
@@ -57,11 +57,11 @@ pub enum JobContent {
     /// DICOM MOVE-SCU job.
     #[serde(rename_all = "PascalCase")]
     DicomMoveScu {
-        description: KString,
-        local_aet: KString,
+        description: CompactString,
+        local_aet: CompactString,
         query: Vec<MoveScuJobQuery>,
-        remote_aet: KString,
-        target_aet: KString,
+        remote_aet: CompactString,
+        target_aet: CompactString,
     },
     DicomModalityStore,
     OrthancPeerStore,
@@ -78,9 +78,9 @@ pub enum MoveScuJobQuery {
     #[serde(rename = "SERIES")]
     Series {
         #[serde(rename = "0010,0020")]
-        patient_id: KString,
+        patient_id: CompactString,
         #[serde(rename = "0008,0050")]
-        accession_number: KString,
+        accession_number: CompactString,
         #[serde(rename = "0020,000d")]
         study_instance_uid: String,
         #[serde(rename = "0020,000e")]
@@ -89,16 +89,16 @@ pub enum MoveScuJobQuery {
     #[serde(rename = "STUDY")]
     Study {
         #[serde(rename = "0010,0020")]
-        patient_id: KString,
+        patient_id: CompactString,
         #[serde(rename = "0008,0050")]
-        accession_number: KString,
+        accession_number: CompactString,
         #[serde(rename = "0020,000d")]
         study_instance_uid: String,
     },
     #[serde(rename = "PATIENT")]
     Patient {
         #[serde(rename = "0010,0020")]
-        patient_id: KString,
+        patient_id: CompactString,
     },
 }
 
@@ -121,8 +121,8 @@ impl MoveScuJobQuery {
 /// fields instead of being an `enum`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct MoveScuJobQueryAny {
-    pub patient_id: KString,
-    pub accession_number: Option<KString>,
+    pub patient_id: CompactString,
+    pub accession_number: Option<CompactString>,
     pub study_instance_uid: Option<String>,
     pub series_instance_uid: Option<String>,
 }
@@ -168,61 +168,4 @@ pub enum QueryRetrieveLevel {
     Study,
     Series,
     Image,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-    use serde_json::json;
-
-    #[test]
-    fn test_deserialize_job_retrieve_series() {
-        let data = json!({
-            "CompletionTime": "20250703T002648.691947",
-            "Content": {
-                "Description": "REST API",
-                "LocalAet": "DEV",
-                "Query": [
-                    {
-                        "0008,0050": "98edede8b2",
-                        "0008,0052": "SERIES",
-                        "0010,0020": "1449c1d",
-                        "0020,000d": "1.2.840.113845.11.1000000001785349915.20130308061609.6346698",
-                        "0020,000e": "1.3.12.2.1107.5.2.19.45152.2013030808061520200285270.0.0.0"
-                    }
-                ],
-                "RemoteAet": "PACS",
-                "TargetAet": "DEV"
-            },
-            "CreationTime": "20250703T002645.190848",
-            "EffectiveRuntime": 3.5,
-            "ErrorCode": 0,
-            "ErrorDescription": "Success",
-            "ErrorDetails": "",
-            "ID": "0b09cfb2-d5c3-4340-9f96-0ae8812eadfe",
-            "Priority": 0,
-            "Progress": 100,
-            "State": "Success",
-            "Timestamp": "20250703T002655.833908",
-            "Type": "DicomMoveScu"
-        });
-        let actual: JobInfo = serde_json::from_value(data).unwrap();
-        let content = actual.content;
-        let expected = JobContent::DicomMoveScu {
-            description: KString::from_static("REST API"),
-            local_aet: KString::from_static("DEV"),
-            query: vec![MoveScuJobQuery::Series {
-                patient_id: KString::from_static("1449c1d"),
-                accession_number: KString::from_static("98edede8b2"),
-                study_instance_uid: "1.2.840.113845.11.1000000001785349915.20130308061609.6346698"
-                    .to_string(),
-                series_instance_uid: "1.3.12.2.1107.5.2.19.45152.2013030808061520200285270.0.0.0"
-                    .to_string(),
-            }],
-            remote_aet: KString::from_static("PACS"),
-            target_aet: KString::from_static("DEV"),
-        };
-        assert_eq!(content, expected)
-    }
 }

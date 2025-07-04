@@ -1,7 +1,6 @@
-use super::{dicom::*, job::JobInfo};
-use crate::api::{RestResponse, client::BaseClient};
-use crate::bindings::{OrthancPluginContext, OrthancPluginErrorCode};
-use kstring::KString;
+use crate::dicom::*;
+use crate::job::JobInfo;
+use compact_str::CompactString;
 use nutype::nutype;
 use serde::{Deserialize, Serialize};
 
@@ -10,14 +9,11 @@ use serde::{Deserialize, Serialize};
 pub struct QueryId(String);
 
 impl ResourceId for QueryId {
+    type Item = Vec<CompactString>;
+
     fn uri(&self) -> String {
         format!("/queries/{}", &self)
     }
-}
-
-impl SystemResourceId<'_> for QueryId {
-    // note: `/queries/{id}` always responds with `["answers", "level", "modality", "query", "retrieve"]`
-    type Item = Vec<KString>;
 }
 
 /// ID of an Orthanc job.
@@ -25,13 +21,11 @@ impl SystemResourceId<'_> for QueryId {
 pub struct JobId(String);
 
 impl ResourceId for JobId {
+    type Item = JobInfo;
+
     fn uri(&self) -> String {
         format!("/jobs/{}", &self)
     }
-}
-
-impl SystemResourceId<'_> for JobId {
-    type Item = JobInfo;
 }
 
 /// ID of a patient in Orthanc.
@@ -39,12 +33,14 @@ impl SystemResourceId<'_> for JobId {
 pub struct PatientId(String);
 
 impl ResourceId for PatientId {
+    type Item = Patient<Option<()>>;
+
     fn uri(&self) -> String {
         format!("/patients/{}", &self)
     }
 }
 
-impl<'a, T> DicomResourceId<'_, T> for PatientId {
+impl<T> DicomResourceId<T> for PatientId {
     type Item = Patient<T>;
     type Ancestor = PatientId;
 }
@@ -54,12 +50,14 @@ impl<'a, T> DicomResourceId<'_, T> for PatientId {
 pub struct StudyId(String);
 
 impl ResourceId for StudyId {
+    type Item = Option<()>;
+
     fn uri(&self) -> String {
         format!("/studies/{}", &self)
     }
 }
 
-impl<'a, T> DicomResourceId<'_, T> for StudyId {
+impl<T> DicomResourceId<T> for StudyId {
     type Item = Study<T>;
     type Ancestor = PatientId;
 }
@@ -69,12 +67,14 @@ impl<'a, T> DicomResourceId<'_, T> for StudyId {
 pub struct SeriesId(String);
 
 impl ResourceId for SeriesId {
+    type Item = Option<()>;
+
     fn uri(&self) -> String {
         format!("/series/{}", &self)
     }
 }
 
-impl<'a, T> DicomResourceId<'a, T> for SeriesId {
+impl<T> DicomResourceId<T> for SeriesId {
     type Item = Series<T>;
     type Ancestor = StudyId;
 }
@@ -84,67 +84,49 @@ impl<'a, T> DicomResourceId<'a, T> for SeriesId {
 pub struct InstanceId(String);
 
 impl ResourceId for InstanceId {
+    type Item = Option<()>;
+
     fn uri(&self) -> String {
         format!("/instances/{}", &self)
     }
 }
 
-impl<'a, T> DicomResourceId<'a, T> for InstanceId {
+impl<T> DicomResourceId<T> for InstanceId {
     type Item = Instance<T>;
     type Ancestor = SeriesId;
 }
 
 /// ID of an Orthanc resource.
 pub trait ResourceId {
+    type Item: serde::de::DeserializeOwned;
+
     /// Get the API URI of this resource.
     fn uri(&self) -> String;
 }
 
-/// ID of an Orthanc system (i.e. not DICOM data) resource, e.g. job, query.
-pub trait SystemResourceId<'a>: ResourceId {
-    type Item: Deserialize<'a>;
+impl<T> ResourceId for &T
+where
+    T: ResourceId,
+{
+    type Item = T::Item;
 
-    /// Get this resource.
-    fn get(&self, context: *mut OrthancPluginContext) -> RestResponse<Self::Item> {
-        let client = BaseClient::new(context);
-        let uri = self.uri();
-        client.get(uri)
-    }
-
-    /// Delete this resource.
-    fn delete(&self, context: *mut OrthancPluginContext) -> OrthancPluginErrorCode {
-        let client = BaseClient::new(context);
-        let uri = self.uri();
-        client.delete(uri)
+    fn uri(&self) -> String {
+        (*self).uri()
     }
 }
 
 /// ID of an Orthanc DICOM resource, e.g. patient, study, series, instance.
-pub trait DicomResourceId<'a, T>: ResourceId + Deserialize<'a> {
+pub trait DicomResourceId<T>: ResourceId {
     type Item: DicomResource<T>;
-    type Ancestor: DicomResourceId<'a, T>;
+    type Ancestor: DicomResourceId<T>;
+}
 
-    /// Get this resource.
-    fn get(&self, context: *mut OrthancPluginContext) -> RestResponse<Self::Item>
-    where
-        Self::Item: Deserialize<'a>,
-        T: RequestedTags,
-    {
-        let client = BaseClient::new(context);
-        let requested_tags = T::names().join(";");
-        let uri = format!("{}?requested-tags={}", self.uri(), requested_tags);
-        client.get(uri)
-    }
-
-    /// Delete this DICOM resource.
-    fn delete(
-        &self,
-        context: *mut OrthancPluginContext,
-    ) -> RestResponse<DeleteResponse<Self::Ancestor>> {
-        let client = BaseClient::new(context);
-        let uri = self.uri();
-        client.delete_with_response(uri)
-    }
+impl<I, T> DicomResourceId<T> for &I
+where
+    I: DicomResourceId<T>,
+{
+    type Item = <I as DicomResourceId<T>>::Item;
+    type Ancestor = I::Ancestor;
 }
 
 /// A type for the "RequestedDicomTags" field in Orthanc's JSON response to

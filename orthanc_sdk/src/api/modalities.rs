@@ -1,19 +1,21 @@
-use super::response::PostJsonResponse;
+use super::client::BaseClient;
+use super::query::Query;
+use super::response::{JsonResponseError, PostJsonResponse};
 use crate::bindings;
-use crate::openapi::*;
+use crate::openapi::{
+    ModalitiesIdGetPost200Response, ModalitiesIdMovePostRequest, ModalitiesIdQueryPost200Response,
+    ModalitiesIdQueryPostRequest,
+};
 use serde_json::json;
-
-use super::query::OrthancQuery;
-use super::response::JsonResponseError;
 
 /// Orthanc client for the networking API.
 ///
 /// Ref: <https://orthanc.uclouvain.be/api/#tag/Networking>
-pub struct ModalitiesClient(super::client::BaseClient);
+pub struct ModalitiesClient(BaseClient);
 
 impl ModalitiesClient {
     pub fn new(context: *mut bindings::OrthancPluginContext) -> Self {
-        Self(super::client::BaseClient::new(context))
+        Self(BaseClient::new(context))
     }
 
     /// List all the DICOM modalities that are known to Orthanc.
@@ -41,14 +43,14 @@ impl ModalitiesClient {
         &self,
         modality: M,
         accession_number: String,
-    ) -> Result<OrthancQuery, JsonResponseError<ModalitiesIdQueryPost200Response>> {
+    ) -> Result<Query, JsonResponseError<ModalitiesIdQueryPost200Response>> {
         let request = ModalitiesIdQueryPostRequest {
             level: Some("Study".to_string()),
             query: Some(json!({"AccessionNumber": accession_number})),
             ..Default::default()
         };
         let response = self.query_raw(modality, request);
-        OrthancQuery::try_new(&self.0, response)
+        Query::try_new(&self.0, response)
     }
 
     /// Start a C-MOVE SCU command as a job, in order to drive the execution

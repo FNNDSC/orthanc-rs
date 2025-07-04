@@ -2,8 +2,8 @@ use crate::blt::BltDatabase;
 use crate::blt::error::{DoNothing, TraceAndReturn};
 use crate::blt::filter::filter_received_series;
 use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
-use orthanc_sdk::api::Find;
-use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, StudyId, SystemResourceId};
+use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, StudyId};
+use orthanc_sdk::api::{DicomClient, GeneralClient};
 use orthanc_sdk::bindings::OrthancPluginContext;
 use orthanc_sdk::{bindings, on_change::OnChangeEvent};
 
@@ -36,7 +36,7 @@ fn on_job_success(
     if !db.has_retrieve(&id) {
         return Ok(());
     }
-    let job = id.get(context).data()?;
+    let job = GeneralClient::new(context).get(id).data()?;
     assert_eq!(job.state, JobState::Success);
     for study in get_series_of_retrieve_job(context, job)? {
         filter_received_series(context, &study.series)?;
@@ -62,7 +62,8 @@ fn get_series_of_retrieve_job(
         return Err(DoNothing);
     };
     let request = FindSeriesByStudy(study_instance_uid);
-    let data = request.find(context).into_result()?;
+    let client = DicomClient::new(context);
+    let data = client.find(request).into_result()?;
     Ok(data)
 }
 

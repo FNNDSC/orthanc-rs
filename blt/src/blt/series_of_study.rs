@@ -1,8 +1,10 @@
-//! Type definitions to use the [crate::lib::api::Find] trait to search for the
+//! Type definitions to use the [Find] trait to search for the
 //! ID of series for each study by StudyInstanceUID.
 
-use orthanc_sdk::api::Find;
-use orthanc_sdk::api::types::{SeriesId, StudyId};
+use orthanc_sdk::api::{
+    Find,
+    types::{SeriesId, StudyId},
+};
 use orthanc_sdk::openapi::ToolsFindPostRequest;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -34,6 +36,6 @@ impl From<FindSeriesByStudy> for ToolsFindPostRequest {
     }
 }
 
-impl<'a> Find<'a> for FindSeriesByStudy {
+impl Find for FindSeriesByStudy {
     type Item = SeriesOfStudy;
 }

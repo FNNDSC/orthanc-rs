@@ -1,5 +1,6 @@
 use crate::blt::error::TraceAndReturn;
-use orthanc_sdk::api::types::{DicomResourceId, RequestedTags, SeriesId};
+use orthanc_sdk::api::DicomClient;
+use orthanc_sdk::api::types::{RequestedTags, Series, SeriesId};
 use orthanc_sdk::bindings::OrthancPluginContext;
 
 pub(crate) fn filter_received_series(
@@ -7,12 +8,14 @@ pub(crate) fn filter_received_series(
     series: &[SeriesId],
 ) -> TraceAndReturn {
     // TODO Sandip excludes series with: {"SOPClassUID": "Secondary Capture Image Storage"}
+    let client = DicomClient::new(context);
     for series_id in series {
-        let tags: SeriesDetails = series_id.get(context).data()?.requested_tags;
+        let details: Series<SeriesDetails> = client.get(series_id).data()?;
+        let tags = details.requested_tags;
         tracing::info!(
             series = series_id.to_string(),
             Modality = tags.modality.as_str(),
-            SOPClassUID = tags.sop_class_uid
+            SOPClassUID = tags.sop_class_uid,
         );
     }
     Ok(())
@@ -27,11 +30,11 @@ impl From<RequestedTagsForSeries> for &'static [&'static str] {
 }
 
 #[derive(serde::Deserialize, Debug)]
-#[serde(rename_all = "PascalCase")]
 struct SeriesDetails {
     #[serde(rename = "SOPClassUID")]
     sop_class_uid: String,
-    modality: kstring::KString,
+    #[serde(rename = "Modality")]
+    modality: compact_str::CompactString,
 }
 
 impl RequestedTags for SeriesDetails {

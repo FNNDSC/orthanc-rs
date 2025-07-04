@@ -1,10 +1,12 @@
 use super::answers::Answers;
+use super::client::BaseClient;
 use super::response::{JsonResponseError, PostJsonResponse};
-use super::types::{IdAndPath, JobId, QueryId};
+
 use crate::openapi::{
     ModalitiesIdQueryPost200Response as MaybeQueryId,
     QueriesIdAnswersIndexRetrievePostRequest as RetrieveRequest,
 };
+use orthanc_api::{IdAndPath, JobId, QueryId};
 
 /// The result of a successful query operation, after which you are able to:
 ///
@@ -13,15 +15,15 @@ use crate::openapi::{
 ///
 /// This corresponds to the group of Orthanc API endpoints under
 /// [`/queries/{id}`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}/get).
-pub struct OrthancQuery {
+pub struct Query {
     pub id: QueryId,
     path: String,
-    client: super::client::BaseClient,
+    client: BaseClient,
 }
 
-impl OrthancQuery {
-    pub(super) fn try_new(
-        client: &super::client::BaseClient,
+impl Query {
+    pub fn try_new(
+        client: &BaseClient,
         response: PostJsonResponse<MaybeQueryId>,
     ) -> Result<Self, JsonResponseError<MaybeQueryId>> {
         let (id, path) = response.and_then(must_get)?;
@@ -30,7 +32,7 @@ impl OrthancQuery {
     }
 
     /// Get the answers to this query.
-    pub fn answers(&self) -> Result<Answers, JsonResponseError<Vec<kstring::KString>>> {
+    pub fn answers(&self) -> Result<Answers, JsonResponseError<Vec<compact_str::CompactString>>> {
         let url = format!("{}/answers", &self.path);
         let answers = self.client.get(url).data()?;
         Ok(Answers::new(

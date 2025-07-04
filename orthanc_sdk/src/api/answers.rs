@@ -1,6 +1,6 @@
 use super::client::BaseClient;
 use super::response::JsonResponseError;
-use kstring::KString;
+use compact_str::CompactString;
 use std::collections::HashMap;
 
 /// A client for the Orthanc API [`/queries/{id}/answers`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}~1answers/get).
@@ -8,18 +8,18 @@ use std::collections::HashMap;
 /// Use the [IntoIterator] trait to get all answer contents.
 /// (Currently, no method is provided for getting one answer content.)
 pub struct Answers {
-    ids: Vec<KString>,
+    ids: Vec<CompactString>,
     path: String,
     client: BaseClient,
 }
 
 impl Answers {
-    pub(super) fn new(client: BaseClient, path: String, ids: Vec<KString>) -> Self {
+    pub fn new(client: BaseClient, path: String, ids: Vec<CompactString>) -> Self {
         Self { client, path, ids }
     }
 
     /// Get the answer IDs.
-    pub fn ids(&self) -> &[KString] {
+    pub fn ids(&self) -> &[CompactString] {
         &self.ids
     }
 
@@ -36,15 +36,15 @@ impl Answers {
 
 /// The response type from
 /// [`/queries/{id}/answers/{index}/content`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}~1answers~1{index}~1content/get).
-pub type AnswerContent = HashMap<KString, AnswerTag>;
+pub type AnswerContent = HashMap<CompactString, AnswerTag>;
 
 /// DICOM tag data
 #[derive(serde::Serialize, serde::Deserialize, Debug, PartialEq, Hash, Clone)]
 pub struct AnswerTag {
     /// Name of DICOM tag
-    name: KString,
+    name: CompactString,
     /// Data type of value
-    type_: KString,
+    type_: CompactString,
     /// DICOM value
     value: String,
 }
@@ -63,8 +63,9 @@ impl IntoIterator for Answers {
     }
 }
 
+/// An iterator over query answers.
 pub struct AnswersIter {
-    ids: Vec<KString>,
+    ids: Vec<CompactString>,
     path: String,
     client: BaseClient,
 }

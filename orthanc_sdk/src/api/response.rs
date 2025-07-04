@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 /// A wrapper for a response from Orthanc's REST API which implements [Drop],
 /// making sure that the memory buffer is freed by
-/// [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2241)
+/// [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2241).
 pub struct RestResponse<D> {
     /// Code returned by calling the Orthanc function.
     pub code: bindings::OrthancPluginErrorCode,
@@ -18,7 +18,7 @@ pub struct RestResponse<D> {
 }
 
 impl<D> RestResponse<D> {
-    pub(super) fn new(
+    pub fn new(
         context: *mut bindings::OrthancPluginContext,
         uri: String,
         code: bindings::OrthancPluginErrorCode,
@@ -120,6 +120,7 @@ impl<T> PostJsonResponse<T> {
     }
 }
 
+/// Error calling built-in Orthanc API with JSON response.
 #[derive(thiserror::Error, Debug)]
 #[error("Error calling built-in Orthanc API from plugin at uri={uri}: {kind}")]
 pub struct JsonResponseError<T> {
@@ -127,6 +128,7 @@ pub struct JsonResponseError<T> {
     pub kind: JsonResponseErrorKind<T>,
 }
 
+/// Error kind for [JsonResponseError].
 #[derive(thiserror::Error, Debug)]
 pub enum JsonResponseErrorKind<T> {
     #[error("cannot deserialize request body: {0}")]

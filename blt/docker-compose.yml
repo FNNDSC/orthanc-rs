@@ -10,8 +10,8 @@ services:
       - 8042:8042
     environment:
       RUST_BACKTRACE: '1'
-      RUST_LOG: 'neochris_orthanc_plugin=trace'
-  
+      RUST_LOG: 'info'
+
   pacs:
     image: docker.io/jodogne/orthanc-plugins:1.12.8
     volumes:
