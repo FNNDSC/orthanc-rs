@@ -134,10 +134,12 @@ where
 pub trait RequestedTags {
     /// DICOM tag names of this type.
     fn names() -> &'static [&'static str];
+    // TODO it would be nice to have a derive trait which can figure out the
+    // names from its serde serialized names
 }
 
 /// Response from deleting a DICOM resource from Orthanc.
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct DeleteResponse<T> {
     pub remaining_ancestor: Option<IdAndPath<T>>,

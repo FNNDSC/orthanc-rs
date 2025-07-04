@@ -30,7 +30,7 @@ impl DicomClient {
     }
 
     /// Delete a DICOM resource from Orthanc.
-    pub fn delete<T, A: DeserializeOwned, I: DicomResourceId<T, Ancestor = A>>(
+    pub fn delete<A: DeserializeOwned, I: DicomResourceId<Option<()>, Ancestor = A>>(
         &self,
         id: I,
     ) -> RestResponse<DeleteResponse<A>> {
