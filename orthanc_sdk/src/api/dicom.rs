@@ -1,7 +1,9 @@
 use super::client::BaseClient;
 use crate::api::{PostJsonResponse, RestResponse};
 use crate::openapi::ToolsFindPostRequest;
-use orthanc_api::{DeleteResponse, DicomResource, DicomResourceId, RequestedTags};
+use orthanc_api::{
+    DeleteResponse, DicomResource, DicomResourceId, HierarchalResourceId, RequestedTags,
+};
 use serde::de::DeserializeOwned;
 
 /// A client for getting DICOM resources (patient, study, series, or instance)
@@ -30,7 +32,7 @@ impl DicomClient {
     }
 
     /// Delete a DICOM resource from Orthanc.
-    pub fn delete<A: DeserializeOwned, I: DicomResourceId<Option<()>, Ancestor = A>>(
+    pub fn delete<A: DeserializeOwned, I: HierarchalResourceId<Ancestor = A>>(
         &self,
         id: I,
     ) -> RestResponse<DeleteResponse<A>> {

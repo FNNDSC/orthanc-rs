@@ -42,6 +42,13 @@ impl ResourceId for PatientId {
 
 impl<T> DicomResourceId<T> for PatientId {
     type Item = Patient<T>;
+}
+
+impl HierarchalResourceId for PatientId {
+    // NOTE: a patient is the "root" in the DICOM hierarchy, it does
+    //       not have an ancestor. Orthanc always returns
+    //       `{ "RemainingAncestor": null }` from calling `DELETE`
+    //       on `/patients/{id}`.
     type Ancestor = PatientId;
 }
 
@@ -59,6 +66,9 @@ impl ResourceId for StudyId {
 
 impl<T> DicomResourceId<T> for StudyId {
     type Item = Study<T>;
+}
+
+impl HierarchalResourceId for StudyId {
     type Ancestor = PatientId;
 }
 
@@ -76,6 +86,9 @@ impl ResourceId for SeriesId {
 
 impl<T> DicomResourceId<T> for SeriesId {
     type Item = Series<T>;
+}
+
+impl HierarchalResourceId for SeriesId {
     type Ancestor = StudyId;
 }
 
@@ -93,6 +106,9 @@ impl ResourceId for InstanceId {
 
 impl<T> DicomResourceId<T> for InstanceId {
     type Item = Instance<T>;
+}
+
+impl HierarchalResourceId for InstanceId {
     type Ancestor = SeriesId;
 }
 
@@ -118,7 +134,6 @@ where
 /// ID of an Orthanc DICOM resource, e.g. patient, study, series, instance.
 pub trait DicomResourceId<T>: ResourceId {
     type Item: DicomResource<T>;
-    type Ancestor: DicomResourceId<T>;
 }
 
 impl<I, T> DicomResourceId<T> for &I
@@ -126,7 +141,18 @@ where
     I: DicomResourceId<T>,
 {
     type Item = <I as DicomResourceId<T>>::Item;
-    type Ancestor = I::Ancestor;
+}
+
+/// ID of an hierarchal DICOM resource.
+pub trait HierarchalResourceId: ResourceId {
+    type Ancestor: ResourceId;
+}
+
+impl<T> HierarchalResourceId for &T
+where
+    T: HierarchalResourceId,
+{
+    type Ancestor = T::Ancestor;
 }
 
 /// A type for the "RequestedDicomTags" field in Orthanc's JSON response to
