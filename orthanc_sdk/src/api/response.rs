@@ -12,6 +12,11 @@ pub struct RestResponse<D> {
     /// Code returned by calling the Orthanc function.
     pub code: bindings::OrthancPluginErrorCode,
     pub uri: String,
+    /// HTTP status code.
+    ///
+    /// NOTE: status is only available when the implementation calls
+    /// [OrthancPluginCallRestApi](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l9165).
+    pub status: Option<u16>,
     buffer: *mut bindings::OrthancPluginMemoryBuffer,
     context: *mut bindings::OrthancPluginContext,
     phantom: PhantomData<D>,
@@ -29,9 +34,59 @@ impl<D> RestResponse<D> {
             uri,
             buffer,
             context,
+            status: None,
             phantom: Default::default(),
         }
     }
+
+    /// Set the HTTP status of this response.
+    pub(crate) fn with_status(mut self, status: u16) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    /// Returns the error code from this response as [Err].
+    pub fn check_error_code(&self) -> Result<(), ResponseErrorCode> {
+        if self.code != bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success {
+            Err(ResponseErrorCode::PluginErrorCode(self.code))
+        } else if let Some(status) = self.status {
+            match StatusCode::from_u16(status) {
+                Ok(status) => {
+                    if status.is_success() {
+                        Ok(())
+                    } else {
+                        Err(ResponseErrorCode::HttpStatus(status))
+                    }
+                }
+                Err(e) => Err(ResponseErrorCode::InvalidHttpStatus(status, e)),
+            }
+        } else {
+            Ok(())
+        }
+    }
+}
+
+/// Code denoting error in response from built-in Orthanc API.
+#[derive(thiserror::Error, Debug)]
+pub enum ResponseErrorCode {
+    /// `InvokeService` function produced an unsuccessful error code.
+    #[error("unsuccessful call to Orthanc built-in API (code {0})")]
+    PluginErrorCode(bindings::OrthancPluginErrorCode),
+    /// `OrthancPluginCallRestApi` produced an HTTP error status code.
+    #[error("error HTTP response from Orthanc built-in API: status {0}")]
+    HttpStatus(StatusCode),
+    /// `OrthancPluginCallRestApi` produced an invalid HTTP status code.
+    #[error("invalid HTTP status code from Orthanc built-in API: {0} ({1:?})")]
+    InvalidHttpStatus(u16, http::status::InvalidStatusCode),
+}
+
+/// Error response from builtin Orthanc API.
+#[derive(thiserror::Error, Debug)]
+pub enum ResponseError<T> {
+    #[error(transparent)]
+    Code(#[from] ResponseErrorCode),
+    #[error(transparent)]
+    Json(#[from] JsonResponseError<T>),
 }
 
 impl<D> Drop for RestResponse<D> {
@@ -74,6 +129,14 @@ impl<'a, D: Deserialize<'a>> RestResponse<D> {
     /// Returns the value. This function may panic.
     pub fn unwrap(&self) -> D {
         self.option_data().unwrap().unwrap()
+    }
+
+    /// Convenience method to call [RestResponse::check_error_code] before returning
+    /// [RestResponse::data].
+    pub fn ok_data(&self) -> Result<D, ResponseError<D>> {
+        self.check_error_code()?;
+        let data = self.data()?;
+        Ok(data)
     }
 }
 

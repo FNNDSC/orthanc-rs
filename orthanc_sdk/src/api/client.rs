@@ -1,6 +1,6 @@
 use super::response::{PostJsonResponse, RestResponse};
 use crate::bindings;
-use crate::helpers::{create_empty_buffer, invoke_service};
+use crate::helpers::{create_empty_buffer, free_memory_buffer, invoke_service};
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 
@@ -50,8 +50,41 @@ impl BaseClient {
 
     /// Make a DELETE call to the built-in Orthanc REST API and get its JSON response.
     pub fn delete_with_response<'a, D: Deserialize<'a>>(&self, uri: String) -> RestResponse<D> {
-        let _ = uri; // TODO OrthancPluginCallRestApi
-        todo!()
+        tracing::warn!(
+            "It seems like Orthanc never responds with a body when DELETE is called from a plugin."
+        );
+        let context = self.context;
+        let c_uri = CString::new(uri.as_str()).unwrap();
+        let answer_body = create_empty_buffer();
+        let answer_headers = create_empty_buffer();
+        let http_status = Box::new(0u16);
+        let params = bindings::_OrthancPluginCallRestApi {
+            answerBody: answer_body,
+            answerHeaders: answer_headers,
+            httpStatus: Box::into_raw(http_status),
+            method: bindings::OrthancPluginHttpMethod_OrthancPluginHttpMethod_Delete,
+            uri: c_uri.as_ptr(),
+            headersCount: 0,
+            headersKeys: std::ptr::null(),
+            headersValues: std::ptr::null(),
+            body: std::ptr::null(),
+            bodySize: 0,
+            afterPlugins: 0,
+        };
+        let code = invoke_service(
+            context,
+            bindings::_OrthancPluginService__OrthancPluginService_CallRestApi,
+            params,
+        );
+        let http_status = unsafe {
+            // headers not handled at the moment
+            free_memory_buffer(context, answer_headers);
+            Box::from_raw(params.httpStatus)
+        };
+        // dbg!(*http_status);
+        // dbg!(code);
+        // dbg!(unsafe {*answer_body}.size );
+        RestResponse::new(context, uri, code, answer_body).with_status(*http_status)
     }
 
     /// Make a POST call to the built-in Orthanc REST API.

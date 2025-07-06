@@ -13,7 +13,7 @@ pub(crate) fn filter_received_series(
         let details: Series<SeriesDetails> = client.get(series_id).data()?;
         let tags = details.requested_tags;
         if let Some(reason) = tags.should_delete() {
-            let res = client.delete(details.id.clone()).data()?;
+            let res = client.delete(details.id.clone()).ok_data()?;
             ancestor = res.remaining_ancestor.map(|x| x.id);
             tracing::info!(
                 id = series_id.to_string(),
