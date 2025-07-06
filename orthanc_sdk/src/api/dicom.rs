@@ -1,7 +1,9 @@
 use super::client::BaseClient;
 use crate::api::{PostJsonResponse, RestResponse};
 use crate::openapi::ToolsFindPostRequest;
-use orthanc_api::{DeleteResponse, DicomResource, DicomResourceId, RequestedTags};
+use orthanc_api::{
+    DeleteResponse, DicomResource, DicomResourceId, HierarchalResourceId, RequestedTags,
+};
 use serde::de::DeserializeOwned;
 
 /// A client for getting DICOM resources (patient, study, series, or instance)
@@ -37,7 +39,7 @@ impl DicomClient {
     ///        deleting a patient, study, series, or instance from an HTTP client,
     ///        it seems like the Orthanc built-in API never returns a body when
     ///        DELETE is called from a plugin.
-    pub fn delete<A: DeserializeOwned, I: DicomResourceId<Option<()>, Ancestor = A>>(
+    pub fn delete<A: DeserializeOwned, I: HierarchalResourceId<Ancestor = A>>(
         &self,
         id: I,
     ) -> RestResponse<DeleteResponse<A>> {
