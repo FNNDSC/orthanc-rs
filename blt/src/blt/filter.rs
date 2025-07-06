@@ -1,22 +1,22 @@
-use crate::blt::error::TraceAndReturn;
-use orthanc_sdk::api::DicomClient;
+use crate::blt::error::DoNothing;
 use orthanc_sdk::api::types::{RequestedTags, Series, SeriesId};
+use orthanc_sdk::api::{DicomClient, GeneralClient};
 use orthanc_sdk::bindings::OrthancPluginContext;
 
 pub(crate) fn filter_received_series(
     context: *mut OrthancPluginContext,
     series: &[SeriesId],
-) -> TraceAndReturn {
-    let client = DicomClient::new(context);
-    let mut ancestor = None;
+) -> Result<usize, DoNothing> {
+    let dicom_client = DicomClient::new(context);
+    let client = GeneralClient::new(context);
+    let mut deleted_count = 0;
     for series_id in series {
-        let details: Series<SeriesDetails> = client.get(series_id).data()?;
+        let details: Series<SeriesDetails> = dicom_client.get(series_id).data()?;
         let tags = details.requested_tags;
         if let Some(reason) = tags.should_delete() {
-            let res = client.delete(details.id.clone()).ok_data()?;
-            ancestor = res.remaining_ancestor.map(|x| x.id);
+            client.delete(details.id)?;
+            deleted_count += 1;
             tracing::info!(
-                id = series_id.to_string(),
                 SeriesInstanceUID = tags.series_instance_uid,
                 SeriesDescription = tags.series_description,
                 tag = reason.tag,
@@ -26,8 +26,7 @@ pub(crate) fn filter_received_series(
             );
         }
     }
-    dbg!(ancestor);
-    Ok(())
+    Ok(deleted_count)
 }
 
 struct RequestedTagsForSeries;

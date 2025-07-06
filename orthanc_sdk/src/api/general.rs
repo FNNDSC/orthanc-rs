@@ -1,6 +1,6 @@
 use crate::api::RestResponse;
 use crate::api::client::BaseClient;
-use crate::bindings::{OrthancPluginContext, OrthancPluginErrorCode};
+use crate::bindings::{self, OrthancPluginContext, OrthancPluginErrorCode};
 use orthanc_api::ResourceId;
 use serde::de::DeserializeOwned;
 
@@ -25,7 +25,18 @@ impl GeneralClient {
     }
 
     /// Delete an Orthanc resource.
-    pub fn delete<I: ResourceId>(&self, id: I) -> OrthancPluginErrorCode {
-        self.0.delete(id.uri())
+    pub fn delete<I: ResourceId>(&self, id: I) -> Result<(), DeleteError<I>> {
+        let code = self.0.delete(id.uri());
+        if code == bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success {
+            Ok(())
+        } else {
+            Err(DeleteError { code, id })
+        }
     }
+}
+
+/// Error deleting an Orthanc resource.
+pub struct DeleteError<I> {
+    pub code: OrthancPluginErrorCode,
+    pub id: I,
 }

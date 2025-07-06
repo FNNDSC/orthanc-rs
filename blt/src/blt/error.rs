@@ -1,4 +1,4 @@
-use orthanc_sdk::api::{JsonResponseError, ResponseError, ResponseErrorCode};
+use orthanc_sdk::api::{DeleteError, JsonResponseError, ResponseError, ResponseErrorCode};
 
 /// A return type for functions which, upon encountering an [Err],
 /// should trace the [Err] value and return.
@@ -27,5 +27,16 @@ impl<T: std::fmt::Debug> From<ResponseError<T>> for DoNothing {
             ResponseError::Code(e) => e.into(),
             ResponseError::Json(e) => e.into(),
         }
+    }
+}
+
+impl<I: std::fmt::Debug> From<DeleteError<I>> for DoNothing {
+    fn from(value: DeleteError<I>) -> Self {
+        tracing::error!(
+            resource = format!("{:?}", value.id),
+            code = value.code,
+            "unsuccessful delete"
+        );
+        Self
     }
 }

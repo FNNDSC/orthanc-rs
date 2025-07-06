@@ -39,8 +39,12 @@ fn on_job_success(
     let job = GeneralClient::new(context).get(id).data()?;
     assert_eq!(job.state, JobState::Success);
     for study in get_series_of_retrieve_job(context, job)? {
-        filter_received_series(context, &study.series)?;
-        anonymize_study(context, study.id);
+        let deleted_count = filter_received_series(context, &study.series)?;
+        if deleted_count == study.series.len() {
+            tracing::warn!(study = study.id.to_string(), "all series were deleted");
+        } else {
+            anonymize_study(context, study.id);
+        }
     }
     Ok(())
 }

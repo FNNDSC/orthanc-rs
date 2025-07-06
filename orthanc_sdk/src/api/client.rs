@@ -41,11 +41,11 @@ impl BaseClient {
     pub fn delete(&self, uri: String) -> bindings::OrthancPluginErrorCode {
         let context = self.context;
         let c_uri = CString::new(uri.as_str()).unwrap();
-        invoke_service(
-            context,
-            bindings::_OrthancPluginService__OrthancPluginService_RestApiDelete,
-            c_uri.as_ptr(),
-        )
+        let service = bindings::_OrthancPluginService__OrthancPluginService_RestApiDelete;
+        unsafe {
+            let invoker = (*context).InvokeService;
+            invoker.unwrap()(context, service, c_uri.as_ptr() as *const std::ffi::c_void)
+        }
     }
 
     /// Make a DELETE call to the built-in Orthanc REST API and get its JSON response.
