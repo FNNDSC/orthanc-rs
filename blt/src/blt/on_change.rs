@@ -1,3 +1,4 @@
+use super::push::push_to_peer;
 use crate::blt::BltDatabase;
 use crate::blt::error::{DoNothing, TraceAndReturn};
 use crate::blt::on_study_received::on_study_received;
@@ -62,12 +63,12 @@ fn on_job_success(
             }
             match modification {
                 ResourceModificationContent::Study(modification) => {
-                    tracing::info!("I should send this study to the peer Orthanc.");
-                    Ok(())
+                    push_to_peer(context, db, modification.id)
                 }
                 _ => Ok(()),
             }
         }
+        // TODO listen for successful storage, then delete study locally
         _ => Ok(()),
     }
 }

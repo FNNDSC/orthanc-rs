@@ -32,7 +32,7 @@ fn query_and_retrieve(
     study: BltStudy,
 ) -> Result<Response<serde_json::Value>, Response<serde_json::Value>> {
     let client = orthanc_sdk::api::ModalitiesClient::new(context);
-    let modality = client.list_modalities().into_iter().next().ok_or_else(|| {
+    let modality = client.list().into_iter().next().ok_or_else(|| {
         Response::error("Orthanc is not configured properly with modalities.".to_string())
     })?;
 

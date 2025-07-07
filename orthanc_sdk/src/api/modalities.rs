@@ -19,7 +19,7 @@ impl ModalitiesClient {
     }
 
     /// List all the DICOM modalities that are known to Orthanc.
-    pub fn list_modalities(&self) -> Vec<String> {
+    pub fn list(&self) -> Vec<String> {
         let response = self.0.get("/modalities".to_string());
         response.unwrap()
     }

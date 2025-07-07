@@ -23,6 +23,8 @@ reset:
     for api in patients jobs queries; do \
       xh :8042/$api | jaq -r '.[]' | xargs -I _ xh DELETE :8042/$api/_ ; \
     done
+    xh -a peer:peer1234 :8043/patients | jaq -r '.[]' \
+      | xargs -I _ xh -a peer:peer1234 DELETE :8043/patients/_
 
 # Push a directory of DICOM files to PACS.
 store dir:
