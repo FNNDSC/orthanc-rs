@@ -12,10 +12,9 @@ mod database;
 mod dicom_date;
 mod error;
 mod filter;
-mod get_accession_number;
 mod models;
 mod on_change;
-mod series_of_study;
+mod on_study_received;
 
 pub use api::route_http_request;
 pub use database::BltDatabase;

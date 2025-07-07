@@ -84,7 +84,7 @@ impl BltDatabase {
 
     /// Add an anonymization job.
     pub fn add_anonymization(&mut self, job_id: JobId, accession_number: AccessionNumber) {
-        assert!(self.has_retrieve(&job_id));
+        assert!(self.retrieve_jobs.contains_right(&accession_number));
         self.anonymize_jobs.insert(job_id, accession_number);
     }
 }
