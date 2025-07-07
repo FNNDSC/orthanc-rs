@@ -1,0 +1,120 @@
+{
+  // The logical name of this instance of Orthanc. This one is
+  // displayed in Orthanc Explorer and at the URI "/system".
+  "Name" : "BLT Test Peer",
+
+  // Path to the directory that holds the heavyweight files (i.e. the
+  // raw DICOM instances). Backslashes must be either escaped by
+  // doubling them, or replaced by forward slashes "/".
+  "StorageDirectory" : "/var/lib/orthanc/db",
+
+  // Path to the directory that holds the SQLite index (if unset, the
+  // value of StorageDirectory is used). This index could be stored on
+  // a RAM-drive or a SSD device for performance reasons.
+  "IndexDirectory" : "/var/lib/orthanc/db",
+
+  // List of paths to the plugins that are to be loaded into this
+  // instance of Orthanc (e.g. "./libPluginTest.so" for Linux, or
+  // "./PluginTest.dll" for Windows). These paths can refer to
+  // folders, in which case they will be scanned non-recursively to
+  // find shared libraries. Backslashes must be either escaped by
+  // doubling them, or replaced by forward slashes "/".
+  "Plugins" : [ 
+    "/usr/share/orthanc/plugins", "/usr/local/share/orthanc/plugins"
+  ],
+
+  /**
+   * Configuration of the HTTP server
+   **/
+
+  // Enable the HTTP server. If this parameter is set to "false",
+  // Orthanc acts as a pure DICOM server. The REST API and Orthanc
+  // Explorer will not be available.
+  "HttpServerEnabled" : true,
+
+  // Enable/disable the Orthanc Explorer Web user interface. This
+  // option is only meaningful if the "HttpServerEnabled" option is
+  // set to "true" (new in Orthanc 1.8.2).
+  "OrthancExplorerEnabled" : true,
+
+  // HTTP port for the REST services and for the GUI
+  "HttpPort" : 8042,
+
+  // Enable HTTP compression to improve network bandwidth utilization,
+  // at the expense of more computations on the server. Orthanc
+  // supports the "gzip" and "deflate" HTTP encodings.
+  // When working on a LAN or on localhost, you should typically set
+  // this configuration to false while when working on low-bandwidth,
+  // you should set it to true.
+  // Note in versions up to 1.12.1, the default value was "true" and is
+  // "false" since 1.12.2.
+  "HttpCompressionEnabled" : true,
+
+  // Enable the publication of the content of the Orthanc server as a
+  // WebDAV share (new in Orthanc 1.8.0). On the localhost, the WebDAV
+  // share is mapped as "http://localhost:8042/webdav/".
+  "WebDavEnabled" : false,
+
+  /**
+   * Configuration of the DICOM server
+   **/
+
+  // Enable the DICOM server. If this parameter is set to "false",
+  // Orthanc acts as a pure REST server. It will not be possible to
+  // receive files or to do query/retrieve through the DICOM protocol.
+  "DicomServerEnabled" : false,
+
+  /**
+   * Security-related options for the HTTP server
+   **/
+
+  "RemoteAccessAllowed" : true,
+  "AuthenticationEnabled" : true,
+
+  // The list of the registered users. Because Orthanc uses HTTP
+  // Basic Authentication, the passwords are stored as plain text.
+  "RegisteredUsers" : {
+    "peer": "peer1234"
+  },
+
+  /**
+   * Network topology
+   **/
+
+  // The list of the known Orthanc peers. This option is ignored if
+  // "OrthancPeersInDatabase" is set to "true", in which case you must
+  // use the REST API to define Orthanc peers.
+  "OrthancPeers" : {
+  },
+
+  // Whether to store the Orthanc peers in the Orthanc database
+  // instead of in this configuration file (new in Orthanc 1.5.0)
+  "OrthancPeersInDatabase" : false,
+
+  // Path to the CA (certification authority) certificates to validate
+  // peers in HTTPS requests. From curl documentation ("--cacert"
+  // option): "Tells curl to use the specified certificate file to
+  // verify the peers. The file may contain multiple CA
+  // certificates. The certificate(s) must be in PEM format." On
+  // Debian-based systems, this option can be set to
+  // "/etc/ssl/certs/ca-certificates.crt".
+  // Starting with Orthanc 1.12.6 and provided that Orthanc has been
+  // built with libcurl > 8.2.0, when this option is empty,
+  // Orthanc uses the operating system native CA store ("--ca-native"
+  // option)
+  "HttpsCACertificates" : "/etc/ssl/certs/ca-certificates.crt",
+
+  // Number of threads that are used by the embedded HTTP server.
+  "HttpThreadsCount" : 50,
+
+  // Deidentify/anonymize the contents of the logs (notably C-FIND,
+  // C-GET, and C-MOVE queries submitted to Orthanc) according to
+  // Table E.1-1 of the DICOM standard (new in Orthanc 1.8.2).
+  // Note that, the DICOM logs at TRACE level are not deidentified !
+  "DeidentifyLogs" : false,
+
+  "OrthancExplorer2" : {
+    "IsDefaultOrthancUI": true,
+    "Theme": "dark"
+  }
+}

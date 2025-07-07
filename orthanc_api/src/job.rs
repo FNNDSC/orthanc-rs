@@ -65,12 +65,12 @@ pub enum JobContent {
         remote_aet: CompactString,
         target_aet: CompactString,
     },
-    DicomModalityStore,
-    OrthancPeerStore,
+    DicomModalityStore {},
+    OrthancPeerStore {},
     ResourceModification(ResourceModificationContent),
-    MergeStudy,
-    SplitStudy,
-    StorageCommitmentScp,
+    MergeStudy {},
+    SplitStudy {},
+    StorageCommitmentScp {},
 }
 
 /// Generic resource modification job content.

@@ -65,7 +65,7 @@ fn anonymize_study(
         ..Default::default()
     };
     let job = client.anonymize(study, request).into_result()?;
-    tracing::info!(job = job.id.to_string(), "anonymizing study");
+    tracing::info!(job = job.id.to_string(), "will anonymize study");
     Ok(job.id)
 }
 
