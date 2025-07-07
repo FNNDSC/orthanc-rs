@@ -1,11 +1,13 @@
 use compact_str::CompactString;
 use serde::{Deserialize, Serialize};
 
+use crate::{JobId, PatientId, SeriesId, StudyId};
+
 /// Orthanc job detail response from
 /// [`/jobs/{id}`](orthanc.uclouvain.be/api/#tag/Jobs/paths/~1jobs~1{id}/get)
 ///
 /// Ref: <https://orthanc.uclouvain.be/hg/orthanc/file/tip/OrthancFramework/Sources/JobsEngine/JobInfo.cpp#l180>
-#[derive(serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "PascalCase")]
 pub struct JobInfo {
     pub completion_time: String,
@@ -17,7 +19,7 @@ pub struct JobInfo {
     pub error_description: String,
     pub error_details: String,
     #[serde(rename = "ID")]
-    pub id: String,
+    pub id: JobId,
     pub priority: i32,
     pub progress: u8,
     pub state: JobState,
@@ -48,7 +50,7 @@ pub enum JobState {
 
 /// The content of an Orthanc job.
 ///
-/// **WARNING**: Only [JobContent::DicomMoveScu] is implemented.
+/// **WARNING**: Only [JobContent::DicomMoveScu] and [JobContent::ResourceModification] are implemented.
 ///
 /// Job type ref: <https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66>
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -65,10 +67,35 @@ pub enum JobContent {
     },
     DicomModalityStore,
     OrthancPeerStore,
-    ResourceModification,
+    ResourceModification(ResourceModificationContent),
     MergeStudy,
     SplitStudy,
     StorageCommitmentScp,
+}
+
+/// Generic resource modification job content.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(rename_all = "PascalCase")]
+pub struct ResourceModification<I> {
+    pub description: CompactString,
+    pub failed_instances_count: usize,
+    #[serde(rename = "ID")]
+    pub id: I,
+    pub instances_count: usize,
+    pub is_anonymization: bool,
+    pub parent_resources: Vec<I>,
+    pub path: String,
+    #[serde(rename = "PatientID")]
+    pub patient_id: PatientId,
+}
+
+/// Resource modification job content enum.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+#[serde(tag = "Type")]
+pub enum ResourceModificationContent {
+    Patient(ResourceModification<PatientId>),
+    Study(ResourceModification<StudyId>),
+    Series(ResourceModification<SeriesId>),
 }
 
 /// The query of a MOVE-SCU job.

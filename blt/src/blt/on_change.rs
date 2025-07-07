@@ -2,7 +2,9 @@ use crate::blt::BltDatabase;
 use crate::blt::error::{DoNothing, TraceAndReturn};
 use crate::blt::on_study_received::on_study_received;
 use orthanc_sdk::api::GeneralClient;
-use orthanc_sdk::api::types::{JobContent, JobId, JobState, MoveScuJobQueryAny};
+use orthanc_sdk::api::types::{
+    JobContent, JobId, JobState, MoveScuJobQueryAny, ResourceModificationContent,
+};
 use orthanc_sdk::bindings::OrthancPluginContext;
 use orthanc_sdk::{bindings, on_change::OnChangeEvent};
 
@@ -32,13 +34,13 @@ fn on_job_success(
     db: &mut BltDatabase,
     id: JobId,
 ) -> TraceAndReturn {
-    if !db.has_retrieve(&id) {
-        return Ok(());
-    }
     let job = GeneralClient::new(context).get(id).ok_data()?;
     assert_eq!(job.state, JobState::Success);
     match job.content {
         JobContent::DicomMoveScu { query, .. } => {
+            if !db.has_retrieve(&job.id) {
+                return Ok(());
+            }
             if let Some(study_instance_uid) = query
                 .into_iter()
                 .map(MoveScuJobQueryAny::from)
@@ -48,15 +50,23 @@ fn on_job_success(
                 on_study_received(context, study_instance_uid, db)
             } else {
                 tracing::error!(
-                    job = job.id,
+                    job = job.id.to_string(),
                     "query does not contain first element with StudyInstanceUID"
                 );
                 Err(DoNothing)
             }
         }
-        JobContent::ResourceModification => {
-            tracing::info!("A resource was modified. Did the anonymization finish?");
-            Ok(())
+        JobContent::ResourceModification(modification) => {
+            if !db.has_anonymization(&job.id) {
+                return Ok(());
+            }
+            match modification {
+                ResourceModificationContent::Study(modification) => {
+                    tracing::info!("I should send this study to the peer Orthanc.");
+                    Ok(())
+                }
+                _ => Ok(()),
+            }
         }
         _ => Ok(()),
     }

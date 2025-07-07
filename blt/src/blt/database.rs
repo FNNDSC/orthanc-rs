@@ -77,6 +77,11 @@ impl BltDatabase {
         self.retrieve_jobs.contains_left(id)
     }
 
+    /// Returns `true` if the specified job ID is a BLT anonymization job.
+    pub fn has_anonymization(&self, id: &JobId) -> bool {
+        self.anonymize_jobs.contains_left(id)
+    }
+
     /// Get the BLT study request for an AccessionNumber.
     pub fn get(&self, accession_number: &AccessionNumber) -> Option<&BltStudy> {
         self.studies.get(accession_number)

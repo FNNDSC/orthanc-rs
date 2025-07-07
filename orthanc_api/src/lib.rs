@@ -154,4 +154,49 @@ mod tests {
         };
         assert_eq!(content, expected)
     }
+
+    #[test]
+    fn test_deserialize_resource_modification_study() {
+        let value = json!({
+            "CompletionTime": "20250707T134050.679818",
+            "Content": {
+                "Description": "REST API",
+                "FailedInstancesCount": 0,
+                "ID": "cfd54023-bf099aee-89d171ec-6602b46f-91058a39",
+                "InstancesCount": 61,
+                "IsAnonymization": true,
+                "ParentResources": [
+                    "11231bb6-426dbf6b-69897722-7ebab601-bd2c626c"
+                ],
+                "Path": "/studies/cfd54023-bf099aee-89d171ec-6602b46f-91058a39",
+                "PatientID": "b9b65cc9-b7e4281d-8727a7f1-0b681068-0c2d3de8",
+                "Type": "Study"
+            },
+            "CreationTime": "20250707T134048.977341",
+            "EffectiveRuntime": 1.701,
+            "ErrorCode": 0,
+            "ErrorDescription": "Success",
+            "ErrorDetails": "",
+            "ID": "c304b4ec-43c9-418a-bebd-4f3a648015d5",
+            "Priority": 0,
+            "Progress": 100,
+            "State": "Success",
+            "Timestamp": "20250707T135101.755033",
+            "Type": "ResourceModification"
+        });
+        let actual: JobInfo = serde_json::from_value(value).unwrap();
+        let expected = ResourceModification {
+            description: CompactString::new("REST API"),
+            failed_instances_count: 0,
+            id: StudyId::new("cfd54023-bf099aee-89d171ec-6602b46f-91058a39"),
+            instances_count: 61,
+            is_anonymization: true,
+            parent_resources: vec![StudyId::new("11231bb6-426dbf6b-69897722-7ebab601-bd2c626c")],
+            path: "/studies/cfd54023-bf099aee-89d171ec-6602b46f-91058a39".to_string(),
+            patient_id: PatientId::new("b9b65cc9-b7e4281d-8727a7f1-0b681068-0c2d3de8"),
+        };
+        let expected_variant =
+            JobContent::ResourceModification(ResourceModificationContent::Study(expected));
+        assert_eq!(actual.content, expected_variant)
+    }
 }
