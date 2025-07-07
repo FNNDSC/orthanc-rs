@@ -11,6 +11,7 @@ pub struct BltDatabase {
     studies: HashMap<AccessionNumber, BltStudy>,
     queries: BiMap<QueryId, AccessionNumber>,
     retrieve_jobs: BiMap<JobId, AccessionNumber>,
+    anonymize_jobs: BiMap<JobId, AccessionNumber>,
 }
 
 #[derive(serde::Serialize)]
@@ -18,6 +19,7 @@ pub struct BltStudyState {
     info: BltStudy,
     query_id: QueryId,
     retrieve_job_id: JobId,
+    anonymization_job_id: Option<JobId>,
 }
 
 impl BltDatabase {
@@ -27,6 +29,7 @@ impl BltDatabase {
             studies: HashMap::with_capacity(capacity),
             queries: BiMap::with_capacity(capacity),
             retrieve_jobs: BiMap::with_capacity(capacity),
+            anonymize_jobs: BiMap::with_capacity(capacity),
         }
     }
 
@@ -45,6 +48,10 @@ impl BltDatabase {
                     .get_by_right(&s.accession_number)
                     .map(|id| id.clone())
                     .unwrap(),
+                anonymization_job_id: self
+                    .anonymize_jobs
+                    .get_by_right(&s.accession_number)
+                    .map(|id| id.clone()),
             })
             .collect()
     }
@@ -73,5 +80,11 @@ impl BltDatabase {
     /// Get the BLT study request for an AccessionNumber.
     pub fn get(&self, accession_number: &AccessionNumber) -> Option<&BltStudy> {
         self.studies.get(accession_number)
+    }
+
+    /// Add an anonymization job.
+    pub fn add_anonymization(&mut self, job_id: JobId, accession_number: AccessionNumber) {
+        assert!(self.has_retrieve(&job_id));
+        self.anonymize_jobs.insert(job_id, accession_number);
     }
 }

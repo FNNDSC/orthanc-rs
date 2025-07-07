@@ -48,16 +48,18 @@ fn on_job_success(
         let deleted_count = filter_received_series(context, &study.series)?;
         if deleted_count == study.series.len() {
             tracing::warn!(study = study.id.to_string(), "all series were deleted");
+            return Err(DoNothing);
+        }
+        let accession_number = get_accession_number(context, study.id.clone())?;
+        if let Some(blt_request) = db.get(&accession_number) {
+            let job_id = anonymize_study(context, study.id, blt_request)?;
+            db.add_anonymization(job_id, accession_number);
         } else {
-            let accession_number = get_accession_number(context, study.id.clone())?;
-            if let Some(blt_request) = db.get(&accession_number) {
-                anonymize_study(context, study.id, blt_request)?;
-            } else {
-                tracing::error!(
-                    AccessionNumber = format!("{accession_number}"),
-                    "study not found in BLT database"
-                );
-            }
+            tracing::error!(
+                AccessionNumber = accession_number.to_string(),
+                "study not found in BLT database (this is a bug)"
+            );
+            return Err(DoNothing);
         }
     }
     Ok(())
