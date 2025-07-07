@@ -11,7 +11,6 @@ mod api;
 mod database;
 mod dicom_date;
 mod error;
-mod filter;
 mod models;
 mod on_change;
 mod on_study_received;

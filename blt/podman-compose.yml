@@ -4,6 +4,7 @@ services:
     volumes:
       - dev:/var/lib/orthanc/db
       - ./orthanc/dev.jsonc:/etc/orthanc/orthanc.json:ro
+      - ./orthanc/ReceivedInstanceFilter.lua:/etc/orthanc/ReceivedInstanceFilter.lua:ro
       - ../target:/target:ro
     ports:
       - 4242:4242

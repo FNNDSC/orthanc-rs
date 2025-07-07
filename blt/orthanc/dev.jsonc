@@ -67,6 +67,7 @@
   // List of paths to the custom Lua scripts that are to be loaded
   // into this instance of Orthanc
   "LuaScripts" : [
+    "/etc/orthanc/ReceivedInstanceFilter.lua"
   ],
 
   // The period (in seconds) between 2 calls of the "OnHeartBeat"
