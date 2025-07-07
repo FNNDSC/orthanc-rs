@@ -46,6 +46,10 @@ pub extern "C" fn OrthancPluginInitialize(
     app_state.on_change_thread = Some(OnChangeThread::spawn(move |event| {
         let app_state = GLOBAL_STATE.try_read().unwrap();
         let context = app_state.context.as_ref().unwrap().0;
+        // NOTE: mutex is being held for a "long" time in on_change because it does
+        //       synchronous calls to the Orthanc built-in API. This is yet another
+        //       issue which will magically go away by replacing the in-process db
+        //       with ValKey.
         let mut db_mutex = DATABASE.lock().unwrap();
         let database = db_mutex.as_mut().unwrap();
         crate::blt::on_change(context, database, event);

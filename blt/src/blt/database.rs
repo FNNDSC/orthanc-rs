@@ -69,4 +69,9 @@ impl BltDatabase {
     pub fn has_retrieve(&self, id: &JobId) -> bool {
         self.retrieve_jobs.contains_left(id)
     }
+
+    /// Get the BLT study request for an AccessionNumber.
+    pub fn get(&self, accession_number: &AccessionNumber) -> Option<&BltStudy> {
+        self.studies.get(accession_number)
+    }
 }

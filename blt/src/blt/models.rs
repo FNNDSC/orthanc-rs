@@ -24,7 +24,7 @@ pub(crate) struct BltStudy {
 
 /// DICOM AccessionNumber
 #[nutype::nutype(
-    derive(Serialize, Deserialize, Clone, Hash, Eq, PartialEq, AsRef, Deref),
+    derive(Serialize, Deserialize, Clone, Hash, Eq, PartialEq, AsRef, Deref, Debug, Display),
     validate(predicate = |s| !s.is_empty())
 )]
 pub struct AccessionNumber(compact_str::CompactString);

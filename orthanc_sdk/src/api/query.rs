@@ -45,7 +45,7 @@ impl Query {
     /// Retrieve all the answers associated with this query/retrieve operation.
     ///
     /// Corresponds with [`/queries/{id}}/retrieve`](https://orthanc.uclouvain.be/api/#tag/Networking/paths/~1queries~1{id}~1retrieve/post).
-    pub fn retrieve_raw<'a, T: serde::Deserialize<'a>>(
+    pub fn retrieve_request<'a, T: serde::Deserialize<'a>>(
         &self,
         request: RetrieveRequest,
     ) -> PostJsonResponse<T> {
@@ -55,12 +55,12 @@ impl Query {
 
     /// Retrieve all the answers associated with this query/retrieve operation
     /// in an asynchronous job.
-    pub fn request_retrieve_job(&self) -> PostJsonResponse<IdAndPath<JobId>> {
+    pub fn retrieve(&self) -> PostJsonResponse<IdAndPath<JobId>> {
         let request = RetrieveRequest {
             asynchronous: Some(true),
             ..Default::default()
         };
-        self.retrieve_raw(request)
+        self.retrieve_request(request)
     }
 }
 

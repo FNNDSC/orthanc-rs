@@ -53,7 +53,7 @@ fn query_and_retrieve(
             body: None,
         });
     }
-    let job = query.request_retrieve_job().into_result().map_err(|e| {
+    let job = query.retrieve().into_result().map_err(|e| {
         e.trace();
         Response::from(e)
     })?;

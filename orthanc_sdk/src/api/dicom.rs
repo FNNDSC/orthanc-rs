@@ -1,8 +1,11 @@
 use super::client::BaseClient;
 use crate::api::{PostJsonResponse, RestResponse};
-use crate::openapi::ToolsFindPostRequest;
+use crate::openapi::{
+    PatientsIdAnonymizePostRequest as AnonymizePostRequest, ToolsFindPostRequest,
+};
 use orthanc_api::{
-    DeleteResponse, DicomResource, DicomResourceId, HierarchalResourceId, RequestedTags,
+    AnonymizableId, DeleteResponse, DicomResource, DicomResourceId, HierarchalResourceId,
+    IdAndPath, JobId, RequestedTags,
 };
 use serde::de::DeserializeOwned;
 
@@ -53,6 +56,25 @@ impl DicomClient {
         request: R,
     ) -> PostJsonResponse<Vec<T>> {
         self.0.post("/tools/find".to_string(), request.into())
+    }
+
+    /// Make a request to anonymize a DICOM resource.
+    pub fn anonymize_request<R: DeserializeOwned, I: AnonymizableId>(
+        &self,
+        id: I,
+        request: AnonymizePostRequest,
+    ) -> PostJsonResponse<R> {
+        self.0.post(id.anonymize_uri(), request)
+    }
+
+    /// Enqueue a job to anonymize a DICOM resource.
+    pub fn anonymize<I: AnonymizableId>(
+        &self,
+        id: I,
+        mut request: AnonymizePostRequest,
+    ) -> PostJsonResponse<IdAndPath<JobId>> {
+        request.asynchronous = Some(true);
+        self.anonymize_request(id, request)
     }
 }
 

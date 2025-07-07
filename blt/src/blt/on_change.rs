@@ -1,11 +1,17 @@
 use crate::blt::BltDatabase;
 use crate::blt::error::{DoNothing, TraceAndReturn};
 use crate::blt::filter::filter_received_series;
+use crate::blt::get_accession_number::get_accession_number;
 use crate::blt::series_of_study::{FindSeriesByStudy, SeriesOfStudy};
 use orthanc_sdk::api::types::{JobContent, JobId, JobInfo, JobState, MoveScuJobQueryAny, StudyId};
 use orthanc_sdk::api::{DicomClient, GeneralClient};
 use orthanc_sdk::bindings::OrthancPluginContext;
+use orthanc_sdk::openapi::PatientsIdAnonymizePostRequest as AnonymizePostRequest;
 use orthanc_sdk::{bindings, on_change::OnChangeEvent};
+
+use super::models::BltStudy;
+
+const TAGS_TO_KEEP: [&'static str; 2] = ["StudyDescription", "SeriesDescription"];
 
 pub fn on_change(
     context: *mut OrthancPluginContext,
@@ -43,7 +49,15 @@ fn on_job_success(
         if deleted_count == study.series.len() {
             tracing::warn!(study = study.id.to_string(), "all series were deleted");
         } else {
-            anonymize_study(context, study.id);
+            let accession_number = get_accession_number(context, study.id.clone())?;
+            if let Some(blt_request) = db.get(&accession_number) {
+                anonymize_study(context, study.id, blt_request)?;
+            } else {
+                tracing::error!(
+                    AccessionNumber = format!("{accession_number}"),
+                    "study not found in BLT database"
+                );
+            }
         }
     }
     Ok(())
@@ -71,10 +85,27 @@ fn get_series_of_retrieve_job(
     Ok(data)
 }
 
-fn anonymize_study(context: *mut OrthancPluginContext, study: StudyId) {
-    let _ = context; // TODO
-    tracing::info!(
-        study = study.to_string(),
-        "I should anonymize this study now"
-    );
+fn anonymize_study(
+    context: *mut OrthancPluginContext,
+    study: StudyId,
+    blt_request: &BltStudy,
+) -> Result<JobId, DoNothing> {
+    let client = DicomClient::new(context);
+    let replacements = serde_json::json!({
+        "PatientID": blt_request.anon_patient_id,
+        "PatientName": blt_request.anon_patient_name,
+        "PatientBirthDate": blt_request.anon_patient_birth_date,
+        "AccessionNumber": blt_request.anon_accession_number,
+    });
+    let keep = TAGS_TO_KEEP.iter().map(|s| s.to_string()).collect();
+    let request = AnonymizePostRequest {
+        keep_source: Some(false),
+        force: Some(true), // required to modify PatientID
+        replace: Some(replacements),
+        keep: Some(keep),
+        ..Default::default()
+    };
+    let job = client.anonymize(study, request).into_result()?;
+    tracing::info!(job = job.id.to_string(), "anonymizing study");
+    Ok(job.id)
 }

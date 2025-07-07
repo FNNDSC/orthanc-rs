@@ -44,6 +44,8 @@ impl<T> DicomResourceId<T> for PatientId {
     type Item = Patient<T>;
 }
 
+impl AnonymizableId for PatientId {}
+
 impl HierarchalResourceId for PatientId {
     // NOTE: a patient is the "root" in the DICOM hierarchy, it does
     //       not have an ancestor. Orthanc always returns
@@ -72,6 +74,8 @@ impl HierarchalResourceId for StudyId {
     type Ancestor = PatientId;
 }
 
+impl AnonymizableId for StudyId {}
+
 /// ID of a DICOM series stored by Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
 pub struct SeriesId(String);
@@ -91,6 +95,8 @@ impl<T> DicomResourceId<T> for SeriesId {
 impl HierarchalResourceId for SeriesId {
     type Ancestor = StudyId;
 }
+
+impl AnonymizableId for SeriesId {}
 
 /// ID of a DICOM instance stored by Orthanc.
 #[nutype(derive(Serialize, Deserialize, Clone, Display, Debug, Eq, PartialEq, Hash))]
@@ -128,6 +134,23 @@ where
 
     fn uri(&self) -> String {
         (*self).uri()
+    }
+}
+
+/// ID of an Orthanc resource that can be anonymized.
+pub trait AnonymizableId: ResourceId {
+    /// Get the API URI for anonymizing this resource.
+    fn anonymize_uri(&self) -> String {
+        format!("{}/anonymize", self.uri())
+    }
+}
+
+impl<T> AnonymizableId for &T
+where
+    T: AnonymizableId,
+{
+    fn anonymize_uri(&self) -> String {
+        (*self).anonymize_uri()
     }
 }
 
