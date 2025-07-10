@@ -22,6 +22,7 @@
             s5cmd
             rust-parallel
             curl
+            bun
           ];
         };
       });

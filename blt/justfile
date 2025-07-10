@@ -1,10 +1,14 @@
 # Build plugin and start Orthanc
-up *args:
-    cargo build && podman-compose up {{args}}
+up *args: build
+    podman-compose up {{args}}
 
 # Shut down and delete volumes
 down *args:
     podman-compose down -v {{args}}
+
+# Build Rust library
+build:
+    cargo build --lib
 
 # Start a test run for the SAG-ANON dataset
 test-run:
@@ -14,8 +18,7 @@ test-run:
                          Anon_PatientBirthDate=19010101
 
 # Rebuild plugin and restart Orthanc
-restart:
-    cargo build
+restart: build
     podman-compose restart dev
 
 # Delete all patients from Orthanc
@@ -74,3 +77,16 @@ _upload_all api_path dir:
 _upload_instance api_path file:
     curl -sSfX POST -H 'Expect:' -H 'Content-Type: application/dicom' -T '{{file}}' -o /dev/null \
          "http://localhost:8042{{api_path}}"
+
+# Assign an AccessionNumber to each study which doesn't have one.
+assign-nums:
+    bun run scripts/assignAccessionNumbers.ts
+
+# Check job statuses.
+jobs:
+    bun run scripts/reportJobStatuses.ts
+
+# Dump a CSV file for processing all studies in Orthanc via BLT protocol.
+csv:
+    bun run scripts/createCsv.ts
+
