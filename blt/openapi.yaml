@@ -1,0 +1,95 @@
+openapi: 3.0.4
+info:
+  title: BLT Orthanc Plugin
+  description: Automated workflow for PACS query, retrieve, anonyzation, and push
+    to peer Orthanc.
+  version: 0.1.0
+paths:
+  /blt/studies:
+    post:
+      operationId: requestNewBltStudy
+      summary: Request new BLT study
+      responses:
+        "201":
+          description: The request was successful, and a new resource was created.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                required:
+                  - data
+      parameters: []
+      description: Request the query, retrieval, and asynchronous anonymization then
+        upload of a study to BLT
+      requestBody:
+        required: true
+        description: Request to retrieve, anonymize, then push a DICOM study to BLT
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BltStudy"
+    get:
+      operationId: getBltStudyStates
+      summary: Get BLT study states
+      responses:
+        "200":
+          description: BLT study state
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    info:
+                      $ref: "#/components/schemas/BltStudy"
+                    query_id:
+                      type: string
+                      format: uuid
+                    retrieve_job_id:
+                      type: string
+                      format: uuid
+                    anonymization_job_id:
+                      type: string
+                      format: uuid
+                  required:
+                    - info
+                    - query_id
+                    - retrieve_job_id
+      parameters: []
+      description: Get the state of previously requested BLT studies, i.e. their PACS
+        retrieve and anonymization job IDs.
+components:
+  schemas:
+    BltStudy:
+      type: object
+      required:
+        - MRN
+        - Anon_PatientID
+        - PatientName
+        - Anon_PatientName
+        - PatientBirthDate
+        - Search_AccessionNumber
+        - Anon_AccessionNumber
+        - Anon_PatientBirthDate
+      properties:
+        MRN:
+          type: string
+        Anon_PatientID:
+          type: string
+        PatientName:
+          type: string
+        Anon_PatientName:
+          type: string
+        PatientBirthDate:
+          type: string
+        Search_AccessionNumber:
+          type: string
+        Anon_AccessionNumber:
+          type: string
+        Anon_PatientBirthDate:
+          type: string
+  securitySchemes: {}
