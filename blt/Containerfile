@@ -1,0 +1,10 @@
+# This Containerfile builds the BLT Orthanc plugin and copying it to an Orthanc image.
+
+FROM docker.io/library/rust:1.88.0-slim-bookworm AS builder
+
+COPY . /src
+WORKDIR /src/blt
+RUN cargo build --release --lib
+
+FROM docker.io/jodogne/orthanc:1.12.8
+COPY --from=builder /src/target/release/libblt.so /usr/local/share/orthanc/plugins/libFnndscBlt.so

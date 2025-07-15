@@ -17,6 +17,16 @@ test-run:
                          Search_AccessionNumber=2543410778 Anon_AccessionNumber=bch01-visit1 \
                          Anon_PatientBirthDate=19010101
 
+# Build Orthanc container image with BLT plugin.
+build-image:
+    podman build -t ghcr.io/fnndsc/orthanc-blt:latest -f ./Containerfile .. \
+        --build-arg CARGO_COLOR=always \
+        --annotation org.opencontainers.image.title='BLT Orthanc' \
+        --annotation org.opencontainers.image.description='Orthanc with BLT plugin' \
+        --annotation org.opencontainers.image.source=https://github.com/FNNDSC/neochris_orthanc_plugin \
+        --annotation org.opencontainers.image.revision=$(git show-ref -s HEAD) \
+        --annotation org.opencontainers.image.licenses='GPL-3.0'
+
 # Rebuild plugin and restart Orthanc
 restart: build
     podman-compose restart dev

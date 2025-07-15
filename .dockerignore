@@ -1,0 +1,6 @@
+.git
+target
+.dockerignore
+Containerfile
+README.md
+justfile
