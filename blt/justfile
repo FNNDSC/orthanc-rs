@@ -90,3 +90,6 @@ jobs:
 csv:
     bun run scripts/createCsv.ts
 
+# Dump OpenAPI spec for Orthanc + BLT plugin.
+openapi:
+    bun run scripts/modifyOrthancOpenAPI.ts | yq -p json -o yaml
