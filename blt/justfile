@@ -17,6 +17,16 @@ test-run:
                          Search_AccessionNumber=2543410778 Anon_AccessionNumber=bch01-visit1 \
                          Anon_PatientBirthDate=19010101
 
+# Build Orthanc container image with BLT plugin.
+build-image:
+    podman build -t ghcr.io/fnndsc/orthanc-blt:latest -f ./Containerfile .. \
+        --build-arg CARGO_TERM_COLOR=always \
+        --annotation org.opencontainers.image.title='BLT Orthanc' \
+        --annotation org.opencontainers.image.description='Orthanc with BLT plugin' \
+        --annotation org.opencontainers.image.source=https://github.com/FNNDSC/neochris_orthanc_plugin \
+        --annotation org.opencontainers.image.revision=$(git show-ref -s HEAD) \
+        --annotation org.opencontainers.image.licenses='GPL-3.0'
+
 # Rebuild plugin and restart Orthanc
 restart: build
     podman-compose restart dev
@@ -28,14 +38,6 @@ reset:
     done
     xh -a peer:peer1234 :8043/patients | jaq -r '.[]' \
       | xargs -I _ xh -a peer:peer1234 DELETE :8043/patients/_
-
-# Push a directory of DICOM files to PACS.
-store dir:
-    @just _upload_all /modalities/PACS/store-straight "{{dir}}"
-
-# Upload a directory of DICOM files to DEV.
-upload dir:
-    @just _upload_all /instances "{{dir}}"
 
 # Download and store test data
 get-data: _download_data_from_gcs (upload 'data/CMB-MEL') _store_cmbmel_data
@@ -52,31 +54,26 @@ _download_data_from_gcs:
 # Modify the CMB-MEL data in Orthanc so that it all belongs to the same study,
 # push it to PACS, then delete it from DEV.
 _store_cmbmel_data:
-    xh :8042/tools/find Level=Patient Query:='{"PatientName": "MSB-*", "PatientID": "MSB-*"}' \
+    xh :8043/tools/find Level=Patient Query:='{"PatientName": "MSB-*", "PatientID": "MSB-*"}' \
       | jaq -r '.[]' \
-      | xargs -I _ xh --ignore-stdin --print=b :8042/patients/_/modify \
+      | xargs -I _ xh --ignore-stdin --print=b :8043/patients/_/modify \
         KeepSource:=false Synchronous:=true Force:=true \
         Replace:='{"PatientID": "BLT-MSB-123", "PatientName": "CMB-MEL^PEOPLE", "PatientBirthDate": "19880620"}' \
       | jaq -r '.Path' | head -n 1 \
-      | xargs -I _ xh --ignore-stdin --print=b GET :8042_ | jaq -r '.Studies[]' \
-      | xargs -I _ xh --ignore-stdin --print=b :8042/studies/_/modify \
+      | xargs -I _ xh --ignore-stdin --print=b GET :8043_ | jaq -r '.Studies[]' \
+      | xargs -I _ xh --ignore-stdin --print=b :8043/studies/_/modify \
         KeepSource:=false Synchronous:=true Force:=true \
-        Replace:='{"AccessionNumber": "2543410778", "StudyDate": "20090830", "StudyDescription": "Small mash of data from CMB-MEL", "StudyInstanceUID": "1.2.826.0.1.3680043.8.498.3145497789427891513037498953281180576"}' \
-      | jaq -r '.PatientID' | head -n 1 \
-      | xargs -I _ xh --ignore-stdin --print=b :8042/modalities/PACS/store \
-        Synchronous:=true Resources:='["_"]' \
-      | jaq -r '.ParentResources[0]' \
-      | xargs -I _ xh --ignore-stdin DELETE :8042/patients/_
+        Replace:='{"AccessionNumber": "2543410778", "StudyDate": "20090830", "StudyDescription": "Small mash of data from CMB-MEL", "StudyInstanceUID": "1.2.826.0.1.3680043.8.498.3145497789427891513037498953281180576"}'
 
-# Upload a directory of DICOM files to an API endpoint.
-_upload_all api_path dir:
+# Upload a directory of DICOM files to PACS.
+upload dir:
     find '{{dir}}' -type f -name '*.dcm' \
-        | rust-parallel --progress-bar --jobs 2 --discard-output=all just _upload_instance "{{api_path}}"
+        | rust-parallel --progress-bar --jobs 2 --discard-output=all just _upload_instance
 
-# Upload a DICOM file to the specified API endpoint.
-_upload_instance api_path file:
-    curl -sSfX POST -H 'Expect:' -H 'Content-Type: application/dicom' -T '{{file}}' -o /dev/null \
-         "http://localhost:8042{{api_path}}"
+# Upload a DICOM file to PACS.
+_upload_instance file:
+    curl --noproxy localhost -sSfX POST -H 'Expect:' -H 'Content-Type: application/dicom' \
+         -T '{{file}}' -o /dev/null "http://localhost:8043/instances"
 
 # Assign an AccessionNumber to each study which doesn't have one.
 assign-nums:

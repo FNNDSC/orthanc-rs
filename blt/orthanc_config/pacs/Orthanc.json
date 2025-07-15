@@ -13,6 +13,10 @@
   // a RAM-drive or a SSD device for performance reasons.
   "IndexDirectory" : "/var/lib/orthanc/db",
 
+  // List of paths to the custom Lua scripts that are to be loaded
+  // into this instance of Orthanc
+  "LuaScripts" : [],
+
   // List of paths to the plugins that are to be loaded into this
   // instance of Orthanc (e.g. "./libPluginTest.so" for Linux, or
   // "./PluginTest.dll" for Windows). These paths can refer to
@@ -37,6 +41,24 @@
     "ResourceModification": 1     // for /anonymize, /modify
   },
 
+  // Maximum number of completed jobs that are kept in memory. A
+  // processing job is considered as complete once it is tagged as
+  // "Success" or "Failure". Since Orthanc 1.5.0, a value of "0"
+  // indicates to keep no job in memory (i.e. jobs are removed from
+  // the history as soon as they are completed), which prevents the
+  // use of some features of Orthanc (typically, synchronous mode in
+  // REST API) and should be avoided for non-developers.
+  "JobsHistorySize" : 10,
+
+  // Whether to save the jobs into the Orthanc database. If this
+  // option is set to "true", the pending/running/completed jobs are
+  // automatically reloaded from the database if Orthanc is stopped
+  // then restarted (except if the "--no-jobs" command-line argument
+  // is specified). This option should be set to "false" if multiple
+  // Orthanc servers are using the same database (e.g. if PostgreSQL
+  // or MariaDB/MySQL is used).
+  "SaveJobs" : false,
+
   /**
    * Configuration of the HTTP server
    **/
@@ -44,7 +66,9 @@
   // Enable the HTTP server. If this parameter is set to "false",
   // Orthanc acts as a pure DICOM server. The REST API and Orthanc
   // Explorer will not be available.
-  "HttpServerEnabled" : false,
+  "HttpServerEnabled" : true,
+  "RemoteAccessAllowed" : true,
+  "AuthenticationEnabled" : false,
 
   /**
    * Configuration of the DICOM server
