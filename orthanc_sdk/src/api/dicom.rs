@@ -36,12 +36,8 @@ impl DicomClient {
 
     /// Delete a DICOM resource from Orthanc.
     ///
-    /// FIXME: do not use [DicomClient::delete] because it does not work, use
-    ///        [crate::api::GeneralClient::delete] instead. Even though the
-    ///        Orthanc REST API returns a body with "RemainingAncestor" when
-    ///        deleting a patient, study, series, or instance from an HTTP client,
-    ///        it seems like the Orthanc built-in API never returns a body when
-    ///        DELETE is called from a plugin.
+    /// **Requires Orthanc 1.12.9** or later.
+    /// See <https://discourse.orthanc-server.org/t/response-to-plugin-from-orthanc-api-delete-endpoint/6022>
     pub fn delete<A: DeserializeOwned, I: HierarchalResourceId<Ancestor = A>>(
         &self,
         id: I,

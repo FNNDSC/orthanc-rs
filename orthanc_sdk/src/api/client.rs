@@ -49,6 +49,9 @@ impl BaseClient {
     }
 
     /// Make a DELETE call to the built-in Orthanc REST API and get its JSON response.
+    ///
+    /// **Requires Orthanc 1.12.9** or later.
+    /// See <https://discourse.orthanc-server.org/t/response-to-plugin-from-orthanc-api-delete-endpoint/6022>
     pub fn delete_with_response<'a, D: Deserialize<'a>>(&self, uri: String) -> RestResponse<D> {
         tracing::warn!(
             "It seems like Orthanc never responds with a body when DELETE is called from a plugin."
