@@ -75,7 +75,7 @@ pub extern "C" fn OrthancPluginFinalize() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetName() -> *const u8 {
-    "neochris-notifier\0".as_ptr()
+    "blt\0".as_ptr()
 }
 
 #[unsafe(no_mangle)]
