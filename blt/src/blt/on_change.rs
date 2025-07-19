@@ -4,7 +4,7 @@ use crate::blt::error::{DoNothing, TraceAndReturn};
 use crate::blt::on_study_received::on_study_received;
 use orthanc_sdk::api::GeneralClient;
 use orthanc_sdk::api::types::{
-    JobContent, JobId, JobState, MoveScuJobQueryAny, ResourceModificationContent,
+    JobContent, JobId, JobState, MoveScuJobQueryAny, ResourceModificationContent, StudyId,
 };
 use orthanc_sdk::bindings::OrthancPluginContext;
 use orthanc_sdk::{bindings, on_change::OnChangeEvent};
@@ -58,17 +58,45 @@ fn on_job_success(
             }
         }
         JobContent::ResourceModification(modification) => {
-            if !db.has_anonymization(&job.id) {
-                return Ok(());
-            }
+            let accession_number = db
+                .get_accession_number_of_anonymization(&job.id)
+                .ok_or(DoNothing)?;
             match modification {
                 ResourceModificationContent::Study(modification) => {
-                    push_to_peer(context, db, modification.id)
+                    let id = push_to_peer(context, modification.id)?;
+                    db.add_push(id, accession_number);
+                    Ok(())
                 }
                 _ => Ok(()),
             }
         }
-        // TODO listen for successful storage, then delete study locally
+        JobContent::OrthancPeerStore {
+            failed_instances_count,
+            parent_resources,
+            peer,
+            ..
+        } => {
+            if failed_instances_count > 0 {
+                tracing::warn!(
+                    peer = peer[1].as_str(),
+                    failed_instances_count = failed_instances_count,
+                    parent_resources = parent_resources.join(","),
+                    "failed pushing some instances to peer"
+                );
+                return Err(DoNothing);
+            }
+            let client = GeneralClient::new(context);
+            for id in parent_resources {
+                let study_id = StudyId::new(id.clone());
+                client.delete(study_id)?;
+                tracing::info!(
+                    peer = peer[1].as_str(),
+                    study = id,
+                    "deleted study because it was successfully pushed"
+                );
+            }
+            Ok(())
+        }
         _ => Ok(()),
     }
 }

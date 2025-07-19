@@ -12,14 +12,21 @@ pub struct BltDatabase {
     queries: BiMap<QueryId, AccessionNumber>,
     retrieve_jobs: BiMap<JobId, AccessionNumber>,
     anonymize_jobs: BiMap<JobId, AccessionNumber>,
+    push_jobs: BiMap<JobId, AccessionNumber>,
 }
 
 #[derive(serde::Serialize)]
 pub struct BltStudyState {
+    #[serde(rename = "Info")]
     info: BltStudy,
+    #[serde(rename = "QueryID")]
     query_id: QueryId,
+    #[serde(rename = "RetrieveJobID")]
     retrieve_job_id: JobId,
+    #[serde(rename = "AnonymizationJobID")]
     anonymization_job_id: Option<JobId>,
+    #[serde(rename = "PushJobID")]
+    push_job_id: Option<JobId>,
 }
 
 impl BltDatabase {
@@ -30,6 +37,7 @@ impl BltDatabase {
             queries: BiMap::with_capacity(capacity),
             retrieve_jobs: BiMap::with_capacity(capacity),
             anonymize_jobs: BiMap::with_capacity(capacity),
+            push_jobs: BiMap::with_capacity(capacity),
         }
     }
 
@@ -50,6 +58,10 @@ impl BltDatabase {
                     .unwrap(),
                 anonymization_job_id: self
                     .anonymize_jobs
+                    .get_by_right(&s.accession_number)
+                    .map(|id| id.clone()),
+                push_job_id: self
+                    .push_jobs
                     .get_by_right(&s.accession_number)
                     .map(|id| id.clone()),
             })
@@ -77,9 +89,9 @@ impl BltDatabase {
         self.retrieve_jobs.contains_left(id)
     }
 
-    /// Returns `true` if the specified job ID is a BLT anonymization job.
-    pub fn has_anonymization(&self, id: &JobId) -> bool {
-        self.anonymize_jobs.contains_left(id)
+    /// Get the original [AccessionNumber] of a BLT anonymization job.
+    pub fn get_accession_number_of_anonymization(&self, id: &JobId) -> Option<AccessionNumber> {
+        self.anonymize_jobs.get_by_left(id).cloned()
     }
 
     /// Get the BLT study request for an AccessionNumber.
@@ -91,5 +103,11 @@ impl BltDatabase {
     pub fn add_anonymization(&mut self, job_id: JobId, accession_number: AccessionNumber) {
         assert!(self.retrieve_jobs.contains_right(&accession_number));
         self.anonymize_jobs.insert(job_id, accession_number);
+    }
+
+    /// Add a push job.
+    pub fn add_push(&mut self, job_id: JobId, accession_number: AccessionNumber) {
+        assert!(self.anonymize_jobs.contains_right(&accession_number));
+        self.push_jobs.insert(job_id, accession_number);
     }
 }
