@@ -50,9 +50,10 @@ pub enum JobState {
 
 /// The content of an Orthanc job.
 ///
-/// **WARNING**: Only [JobContent::DicomMoveScu] and [JobContent::ResourceModification] are implemented.
+/// **WARNING**: not all variants are implemented, check the source code.
 ///
 /// Job type ref: <https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Sources/ServerJobs/OrthancJobUnserializer.cpp#l66>
+#[serde_with::serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 #[serde(tag = "Type", content = "Content")]
 pub enum JobContent {
@@ -66,7 +67,25 @@ pub enum JobContent {
         target_aet: CompactString,
     },
     DicomModalityStore {},
-    OrthancPeerStore {},
+    /// Store DICOM in peer Orthanc job.
+    #[serde(rename_all = "PascalCase")]
+    OrthancPeerStore {
+        compress: bool,
+        description: CompactString,
+        failed_instances_count: usize,
+        instances_count: usize,
+        /// Local resource IDs being pushed to the peer.
+        /// Note that the resource type is not known, it
+        /// might be a patient, study, series, or instance.
+        parent_resources: Vec<String>,
+        /// peer configuration.
+        peer: [CompactString; 3],
+        /// size in bytes
+        #[serde_as(as = "serde_with::DisplayFromStr")]
+        size: u64,
+        // NOTE: SizeMB is not included, because it is redundant but also misnamed.
+        // https://orthanc.uclouvain.be/bugs/show_bug.cgi?id=250
+    },
     ResourceModification(ResourceModificationContent),
     MergeStudy {},
     SplitStudy {},

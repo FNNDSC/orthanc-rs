@@ -47,6 +47,14 @@ pub(crate) fn create_empty_buffer() -> *mut bindings::OrthancPluginMemoryBuffer 
     Box::into_raw(boxed)
 }
 
+/// Translation of [OrthancPluginFreeString](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2079).
+pub(crate) unsafe fn free_string(
+    context: *mut bindings::OrthancPluginContext,
+    buffer: std::mem::MaybeUninit<*mut std::ffi::c_char>,
+) {
+    unsafe { (*context).Free.unwrap()(buffer.assume_init() as *mut std::ffi::c_void) }
+}
+
 // pub(crate) unsafe fn create_memory_buffer(
 //     context: *mut bindings::OrthancPluginContext,
 // ) -> *mut bindings::OrthancPluginMemoryBuffer {

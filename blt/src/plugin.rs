@@ -18,21 +18,45 @@ struct AppState {
     on_change_thread: Option<OnChangeThread>,
 }
 
+/// BLT plugin name.
+///
+/// NOTE: this is a macro instead of `const` so that it can be used with [concat].
+macro_rules! plugin_name {
+    () => {
+        "blt"
+    };
+}
+
 struct OrthancContext(*mut bindings::OrthancPluginContext);
 unsafe impl Send for OrthancContext {}
 unsafe impl Sync for OrthancContext {}
+
+/// Orthanc configuration file.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct OrthancConfig {
+    blt: Option<OrthancBltPluginConfig>,
+}
+
+/// BLT plugin configuration section of Orthanc configuration file.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct OrthancBltPluginConfig {
+    verbose: Option<bool>,
+}
 
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginInitialize(
     context: *mut bindings::OrthancPluginContext,
 ) -> bindings::OrthancPluginErrorCode {
-    if let Err(e) = tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            // TODO set verbosity from Orthanc JSON
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .finish(),
-    ) && !e.to_string().contains("has already been set")
+    let logger = orthanc_sdk::OrthancLogger {
+        context,
+        plugin_name: plugin_name!(),
+        verbose: get_config(context).and_then(|c| c.verbose).unwrap_or(false),
+    };
+    if let Err(e) = tracing::subscriber::set_global_default(logger)
+        && !e.to_string().contains("has already been set")
     {
         eprintln!("Failed to initialize logging in Rust plugin: {e}");
     }
@@ -61,6 +85,12 @@ pub extern "C" fn OrthancPluginInitialize(
     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
 }
 
+fn get_config(context: *mut bindings::OrthancPluginContext) -> Option<OrthancBltPluginConfig> {
+    let buffer = orthanc_sdk::get_configuration(context)?;
+    let config: OrthancConfig = buffer.deserialize().ok()?;
+    config.blt
+}
+
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginFinalize() {
     let mut app_state = GLOBAL_STATE.try_write().expect("unable to obtain lock");
@@ -75,7 +105,7 @@ pub extern "C" fn OrthancPluginFinalize() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetName() -> *const u8 {
-    "neochris-notifier\0".as_ptr()
+    concat!(plugin_name!(), "\0").as_ptr()
 }
 
 #[unsafe(no_mangle)]
