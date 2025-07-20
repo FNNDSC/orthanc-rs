@@ -18,6 +18,13 @@ struct AppState {
     on_change_thread: Option<OnChangeThread>,
 }
 
+// NOTE: macro instead of `const` so that it can be used with `concat!`
+macro_rules! plugin_name {
+    () => {
+        "blt"
+    };
+}
+
 struct OrthancContext(*mut bindings::OrthancPluginContext);
 unsafe impl Send for OrthancContext {}
 unsafe impl Sync for OrthancContext {}
@@ -27,12 +34,13 @@ unsafe impl Sync for OrthancContext {}
 pub extern "C" fn OrthancPluginInitialize(
     context: *mut bindings::OrthancPluginContext,
 ) -> bindings::OrthancPluginErrorCode {
-    if let Err(e) = tracing::subscriber::set_global_default(
-        tracing_subscriber::FmtSubscriber::builder()
-            // TODO set verbosity from Orthanc JSON
-            .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
-            .finish(),
-    ) && !e.to_string().contains("has already been set")
+    let logger = orthanc_sdk::OrthancLogger {
+        context,
+        plugin_name: plugin_name!(),
+        verbose: true,
+    };
+    if let Err(e) = tracing::subscriber::set_global_default(logger)
+        && !e.to_string().contains("has already been set")
     {
         eprintln!("Failed to initialize logging in Rust plugin: {e}");
     }
@@ -75,7 +83,7 @@ pub extern "C" fn OrthancPluginFinalize() {
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetName() -> *const u8 {
-    "blt\0".as_ptr()
+    concat!(plugin_name!(), "\0").as_ptr()
 }
 
 #[unsafe(no_mangle)]

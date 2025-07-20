@@ -25,3 +25,6 @@ pub mod http;
 pub mod on_change;
 
 mod helpers;
+mod tracing_subscriber;
+
+pub use tracing_subscriber::OrthancLogger;
