@@ -18,7 +18,9 @@ struct AppState {
     on_change_thread: Option<OnChangeThread>,
 }
 
-// NOTE: macro instead of `const` so that it can be used with `concat!`
+/// BLT plugin name.
+///
+/// NOTE: this is a macro instead of `const` so that it can be used with [concat].
 macro_rules! plugin_name {
     () => {
         "blt"
@@ -29,6 +31,20 @@ struct OrthancContext(*mut bindings::OrthancPluginContext);
 unsafe impl Send for OrthancContext {}
 unsafe impl Sync for OrthancContext {}
 
+/// Orthanc configuration file.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct OrthancConfig {
+    blt: Option<OrthancBltPluginConfig>,
+}
+
+/// BLT plugin configuration section of Orthanc configuration file.
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "PascalCase")]
+struct OrthancBltPluginConfig {
+    verbose: Option<bool>,
+}
+
 #[allow(clippy::not_unsafe_ptr_arg_deref)]
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginInitialize(
@@ -37,7 +53,7 @@ pub extern "C" fn OrthancPluginInitialize(
     let logger = orthanc_sdk::OrthancLogger {
         context,
         plugin_name: plugin_name!(),
-        verbose: true,
+        verbose: get_config(context).and_then(|c| c.verbose).unwrap_or(false),
     };
     if let Err(e) = tracing::subscriber::set_global_default(logger)
         && !e.to_string().contains("has already been set")
@@ -67,6 +83,12 @@ pub extern "C" fn OrthancPluginInitialize(
     register_rest(context, "/blt/studies", Some(rest_callback));
 
     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+}
+
+fn get_config(context: *mut bindings::OrthancPluginContext) -> Option<OrthancBltPluginConfig> {
+    let buffer = orthanc_sdk::get_configuration(context)?;
+    let config: OrthancConfig = buffer.deserialize().ok()?;
+    config.blt
 }
 
 #[unsafe(no_mangle)]

@@ -24,7 +24,9 @@ pub mod callback;
 pub mod http;
 pub mod on_change;
 
+mod config;
 mod helpers;
 mod tracing_subscriber;
 
+pub use config::{OrthancConfigurationBuffer, get_configuration};
 pub use tracing_subscriber::OrthancLogger;
