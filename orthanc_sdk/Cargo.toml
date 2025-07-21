@@ -2,7 +2,7 @@
 name = "orthanc_sdk"
 description = "Orthanc plugin SDK"
 repository = "https://github.com/FNNDSC/orthanc-rs"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2024"
 license = "GPL-3.0"
 keywords = ["orthanc", "plugin", "ffi"]
