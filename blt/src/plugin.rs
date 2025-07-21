@@ -116,7 +116,7 @@ pub extern "C" fn OrthancPluginGetVersion() -> *const u8 {
 extern "C" fn on_change(
     change_type: bindings::OrthancPluginChangeType,
     resource_type: bindings::OrthancPluginResourceType,
-    resource_id: *const std::os::raw::c_char,
+    resource_id: *const std::ffi::c_char,
 ) -> bindings::OrthancPluginErrorCode {
     let resource_id = if resource_id.is_null() {
         None

@@ -18,6 +18,8 @@
             # you are assumed to have `rustup` and `podman` installed globally
             just
             fd
+            xh
+            jaq
             openapi-generator-cli
             rust-bindgen
             podman-compose

@@ -1,0 +1,38 @@
+name: Test
+
+on:
+  push:
+    branches: [ master ]
+    paths:
+      - '.github/workflows/test.yml'
+      - 'orthanc_api/**.rs'
+      - 'orthanc_sdk/**.rs'
+      - '**/Cargo.lock'
+      - '**/Cargo.toml'
+      - '**/justfile'
+      - 'example_plugin/**'
+  pull_request:
+
+jobs:
+  test:
+    name: Test example plugin
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Codegen
+        run: nix develop -c just
+      - name: Build
+        run: cd example_plugin && nix develop -c just build
+      - name: Pull images
+        run: cd example_plugin && nix develop -c podman-compose pull
+      - name: Start Orthanc
+        run: cd example_plugin && nix develop -c just -- up -d
+      - name: Wait for Orthanc to start
+        run: sleep 1
+      - name: Test
+        run: cd example_plugin && nix develop -c just test
+      - name: Tear town
+        run: cd example_plugin && nix develop -c just down

@@ -1,7 +1,12 @@
 [package]
 name = "orthanc_sdk"
+description = "Orthanc plugin SDK"
+repository = "https://github.com/FNNDSC/orthanc-rs"
 version = "0.1.0"
 edition = "2024"
+license = "GPL-3.0"
+keywords = ["orthanc", "plugin", "ffi"]
+categories = ["science::neuroscience", "science", "api-bindings"]
 
 [dependencies]
 orthanc_client_ogen = { path = "../orthanc_client_ogen", version = "1.12", default-features = false }

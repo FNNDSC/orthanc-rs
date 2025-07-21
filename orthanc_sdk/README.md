@@ -2,6 +2,10 @@
 
 Idiomatic and hopefully safe abstractions for developing an Orthanc plugin in Rust.
 
+## Getting Started
+
+Please refer to the [example plugin](../example_plugin/src/plugin.rs).
+
 ## Naming Conventions
 
 Orthanc can do many operations asynchronously using a built-in job queue.

@@ -72,8 +72,7 @@ upload dir:
 
 # Upload a DICOM file to PACS.
 _upload_instance file:
-    curl --noproxy localhost -sSfX POST -H 'Expect:' -H 'Content-Type: application/dicom' \
-         -T '{{file}}' -o /dev/null "http://localhost:8043/instances"
+    xh POST :8043/instances Expect: Content-Type:application/dicom < '{{file}}'
 
 # Assign an AccessionNumber to each study which doesn't have one.
 assign-nums:

@@ -1,0 +1,22 @@
+{
+  "Name" : "Rust Example Plugin",
+  "StorageDirectory" : "/var/lib/orthanc/db",
+  "IndexDirectory" : "/var/lib/orthanc/db",
+
+  // Load our custom Rust plugin.
+  "Plugins" : [ "/target/debug" ],
+
+  // Custom settings for our Rust plugin.
+  "ExampleRustPlugin" : {
+    "MrnFile" : "/tmp/output.txt"
+  },
+
+  "HttpServerEnabled" : true,
+  "RemoteAccessAllowed" : true,
+  "AuthenticationEnabled" : false,
+  "HttpPort" : 8042,
+
+  "HttpDescribeErrors" : true,
+  "HttpVerbose" : false,
+  "DeidentifyLogs" : false
+}

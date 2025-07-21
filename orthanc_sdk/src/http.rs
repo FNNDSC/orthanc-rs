@@ -7,6 +7,11 @@ use serde::Serialize;
 use std::ffi::CStr;
 
 /// An HTTP response from Orthanc.
+///
+/// **WARNING**: this interface is unstable and likely to change in the future.
+/// We will probably change it to be an `enum` so that parameters can be provided
+/// to the right Orthanc SDK function, e.g. `OrthancPluginSendMethodNotAllowed`,
+/// `OrthancPluginRedirect`, or `OrthancPluginSendUnauthorized`.
 pub struct Response<S: serde::Serialize> {
     pub code: http::StatusCode,
     pub body: Option<S>,
@@ -105,6 +110,24 @@ pub enum Method {
     Put,
     /// HTTP DELETE method
     Delete,
+}
+
+impl Method {
+    /// Get the method name as a [&str].
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Method::Get => "GET",
+            Method::Post => "POST",
+            Method::Put => "PUT",
+            Method::Delete => "DELETE",
+        }
+    }
+}
+
+impl std::fmt::Display for Method {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 impl TryFrom<bindings::OrthancPluginHttpMethod> for Method {
