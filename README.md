@@ -2,14 +2,20 @@
 
 This [cargo workspace](https://doc.rust-lang.org/cargo/reference/workspaces.html) contains:
 
-| Crate                            | Description                                                              |
-|----------------------------------|--------------------------------------------------------------------------|
-| [orthanc_api](./orthanc_api)     | Hand-written types for the Orthanc API                                   |
-| [orthanc_sdk](./orthanc_sdk)     | Abstractions for developing a Rust Orthanc plugin                        |
-| [orthanc_client_ogen_overlay][1] | Automatically generated Orthanc client using OpenAPI                     |
-| [blt](./blt)                     | Orthanc plugin for automating the Boston Children's Hospital BLT project |
+| Crate                            | Version                                                                                          | Description                                                              |
+|----------------------------------|--------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| [orthanc_sdk](./orthanc_sdk)     | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_sdk)][orthanc_sdk]                 | Abstractions for developing a Rust Orthanc plugin                        |
+| [orthanc_client_ogen][ogen]      | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_client_ogen)][orthanc_client_ogen] | Automatically generated Orthanc client using OpenAPI                     |
+| [orthanc_api](./orthanc_api)     | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_api)][orthanc_api]                 | Hand-written types for the Orthanc API                                   |
+| [example_plugin][example]        | N/A                                                                                              | Example Orthanc plugin using [orthanc_sdk][orthanc_sdk]                  |
+| [blt](./blt)                     | ![Cargo.toml Version][blt-badge]                                                                 | Orthanc plugin for automating the Boston Children's Hospital BLT project |
 
-[1]: ./orthanc_client_ogen_overlay
+[ogen]: ./orthanc_client_ogen_overlay
+[example]: ./example_plugin/src/plugin.rs
+[orthanc_api]: https://crates.io/crates/orthanc_api
+[orthanc_sdk]: https://crates.io/crates/orthanc_sdk
+[orthanc_client_ogen]: https://crates.io/crates/orthanc_client_ogen
+[blt-badge]: https://img.shields.io/badge/dynamic/toml?url=https%3A%2F%2Fgithub.com%2FFNNDSC%2Forthanc-rs%2Fraw%2Frefs%2Fheads%2Fmaster%2Fblt%2FCargo.toml&query=package.version&label=Cargo.toml
 
 ## Development
 

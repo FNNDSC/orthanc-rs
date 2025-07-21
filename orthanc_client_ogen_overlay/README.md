@@ -14,7 +14,7 @@ orthanc_client_ogen = { version = "1", default-features = false }
 ```
 
 > [!TIP]
-> See [orthanc_api](../orthanc_api), which defines models for what is not covered by Orthanc's OpenAPI schema.
+> See [orthanc_api](https://crates.io/crates/orthanc_api), which defines models for what is not covered by Orthanc's OpenAPI schema.
 
 ## Notes
 

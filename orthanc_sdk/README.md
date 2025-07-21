@@ -1,5 +1,11 @@
 # orthanc_sdk
 
+> [!CAUTION]
+> Work in progress.
+> Please reach out via [GitHub](https://github.com/FNNDSC/orthanc-rs/discussions)
+> or [Matrix](https://matrix.to/#/#chris-general:fedora.im) if you're using this
+> crate! It would motivate me to complete the missing features.
+
 Idiomatic and hopefully safe abstractions for developing an Orthanc plugin in Rust.
 
 ## Getting Started

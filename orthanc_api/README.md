@@ -2,6 +2,9 @@
 
 > [!CAUTION]
 > Work in progress.
+> Please reach out via [GitHub](https://github.com/FNNDSC/orthanc-rs/discussions)
+> or [Matrix](https://matrix.to/#/#chris-general:fedora.im) if you're using this
+> crate! It would motivate me to complete the missing features.
 
 Rust package defining types for Orthanc REST API requests and responses.
 
@@ -9,7 +12,7 @@ Rust package defining types for Orthanc REST API requests and responses.
 
 Orthanc has an [OpenAPI schema](https://orthanc.uclouvain.be/api/) from which
 we can generate model code automatically, e.g. see
-[orthanc_client_ogen](../orthanc_client_ogen).
+[orthanc_client_ogen](https://crates.io/crates/orthanc_client_ogen).
 The type definitions here supplement the OpenAPI specification where response
 models are untyped. Furthermore, the handwritten definitions are more precise
 and idiomatic than what can be expressed using OpenAPI.
@@ -29,4 +32,4 @@ and idiomatic than what can be expressed using OpenAPI.
 - This crate is [sans-IO](https://www.firezone.dev/blog/sans-io): it describes API types,
   but it does not implement communication with Orthanc. It can be built upon to provide
   an HTTP client for Orthanc (not implemented) or to be used in developing an Orthanc
-  plugin that speaks to the built-in API (see [orthanc_sdk](../orthanc_sdk)).
+  plugin that speaks to the built-in API (see [orthanc_sdk](https://crates.io/crates/orthanc_sdk)).
