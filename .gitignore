@@ -1,2 +1,4 @@
 /target
-.idea
+/.idea
+/orthanc_client_ogen
+/3rdparty

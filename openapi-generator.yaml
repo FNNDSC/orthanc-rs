@@ -1,15 +1,15 @@
-inputSpec: /3rdparty/orthanc-openapi.json
+inputSpec: 'https://orthanc.uclouvain.be/api/orthanc-openapi.json'
 
 generatorName: rust
-outputDir: client
+outputDir: orthanc_client_ogen
 
 # https://openapi-generator.tech/docs/generators/rust/#config-options
 additionalProperties:
-  library: reqwest
+  packageName: orthanc_client_ogen
+  version: 1.12.8
   preferUnsignedInt: true
   supportAsync: true
   supportMiddleware: true
   topLevelApiClient: true
-  useBonBuilder: false
-  packageName: chris-oag
-  '!include': version.yaml
+  library: reqwest
+  # useBonBuilder: false

@@ -7,7 +7,7 @@ use http::StatusCode;
 use std::ffi::CString;
 use std::str::FromStr;
 
-/// Translated from `OrthancPluginRegisterOnChangeCallback`.
+/// Translated from [`OrthancPluginRegisterOnChangeCallback`](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3597).
 pub fn register_on_change(
     context: *mut bindings::OrthancPluginContext,
     callback: bindings::OrthancPluginOnChangeCallback,

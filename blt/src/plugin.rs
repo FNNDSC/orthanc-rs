@@ -2,8 +2,8 @@
 
 use crate::blt::BltDatabase;
 use orthanc_sdk::bindings;
-use orthanc_sdk::callback::{create_json_rest_callback, register_on_change, register_rest};
-use orthanc_sdk::on_change::{OnChangeEvent, OnChangeThread};
+use orthanc_sdk::utils::{OnChangeEvent, OnChangeThread};
+use orthanc_sdk::{create_json_rest_callback, register_on_change, register_rest};
 use std::sync::{Mutex, RwLock};
 
 static GLOBAL_STATE: RwLock<AppState> = RwLock::new(AppState {

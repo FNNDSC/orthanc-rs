@@ -7,7 +7,7 @@ use orthanc_sdk::api::types::{
     JobContent, JobId, JobState, MoveScuJobQueryAny, ResourceModificationContent, StudyId,
 };
 use orthanc_sdk::bindings::OrthancPluginContext;
-use orthanc_sdk::{bindings, on_change::OnChangeEvent};
+use orthanc_sdk::{bindings, utils::OnChangeEvent};
 
 pub fn on_change(
     context: *mut OrthancPluginContext,

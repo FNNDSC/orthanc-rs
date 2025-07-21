@@ -1,5 +1,6 @@
-//! Helpers for implementing [OrthancPluginRegisterOnChangeCallback](https://orthanc.uclouvain.be/sdk/group__Callbacks.html#ga78140887a94f1afb067a15db5ee4099c).
+//! Miscellaneous utilities.
 //!
+//! Helpers for implementing [OrthancPluginRegisterOnChangeCallback](https://orthanc.uclouvain.be/sdk/group__Callbacks.html#ga78140887a94f1afb067a15db5ee4099c).
 //! The upstream documentation recommends handling events in a separate thread. This module helps with that.
 //!
 //! Future work: thread pool, async runtime, ...

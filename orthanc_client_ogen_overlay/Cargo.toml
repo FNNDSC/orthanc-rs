@@ -1,0 +1,20 @@
+[package]
+name = "orthanc_client_ogen"
+version = "1.12.8"
+authors = ["Jennings Zhang", "Sébastien Jodogne", "OpenAPI Generator team and contributors"]
+description = "Orthanc API client library produced by OpenAPI Generator"
+license = "GPL-3.0"
+edition = "2024"
+keywords = ["orthanc", "api", "client", "rest", "openapi"]
+categories = ["science::neuroscience", "science", "web-programming::http-client", "api-bindings"]
+
+[dependencies]
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = "^1.0"
+url = "^2.5"
+reqwest = { version = "^0.12", default-features = false, features = ["json"], optional = true }
+reqwest-middleware = { version = "0.4.2", features = ["json"], optional = true }
+
+[features]
+default = ["client"]
+client = ["dep:reqwest", "dep:reqwest-middleware"]
