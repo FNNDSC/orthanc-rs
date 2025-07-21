@@ -7,7 +7,7 @@ use std::marker::PhantomData;
 
 /// A wrapper for a response from Orthanc's REST API which implements [Drop],
 /// making sure that the memory buffer is freed by
-/// [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2241).
+/// [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02241).
 pub struct RestResponse<D> {
     /// Code returned by calling the Orthanc function.
     pub code: bindings::OrthancPluginErrorCode,
@@ -15,7 +15,7 @@ pub struct RestResponse<D> {
     /// HTTP status code.
     ///
     /// NOTE: status is only available when the implementation calls
-    /// [OrthancPluginCallRestApi](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l9165).
+    /// [OrthancPluginCallRestApi](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l09165).
     pub status: Option<u16>,
     buffer: *mut bindings::OrthancPluginMemoryBuffer,
     context: *mut bindings::OrthancPluginContext,

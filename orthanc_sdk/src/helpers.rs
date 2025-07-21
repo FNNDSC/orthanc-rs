@@ -1,7 +1,7 @@
 use crate::bindings;
 
 /// Translation of the C code which appears as the last line of most functions in `OrthancCPlugin.h`,
-/// e.g. https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3056
+/// e.g. <https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03056>
 ///
 /// ```c
 /// context->InvokeService(context, service, &params);
@@ -31,7 +31,7 @@ pub(crate) fn must_invoke_service<T>(
     }
 }
 
-/// Translation of [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2241)
+/// Translation of [OrthancPluginFreeMemoryBuffer](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02241)
 pub(crate) unsafe fn free_memory_buffer(
     context: *mut bindings::OrthancPluginContext,
     buffer: *mut bindings::OrthancPluginMemoryBuffer,
@@ -47,7 +47,7 @@ pub(crate) fn create_empty_buffer() -> *mut bindings::OrthancPluginMemoryBuffer 
     Box::into_raw(boxed)
 }
 
-/// Translation of [OrthancPluginFreeString](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2079).
+/// Translation of [OrthancPluginFreeString](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02079).
 pub(crate) unsafe fn free_string(
     context: *mut bindings::OrthancPluginContext,
     buffer: std::mem::MaybeUninit<*mut std::ffi::c_char>,

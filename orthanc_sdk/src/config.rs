@@ -8,14 +8,14 @@ use crate::{
 /// Return the content of the configuration file(s).
 ///
 /// Rust-friendly wrapper to a translation of
-/// [OrthancPluginGetConfiguration](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3961).
+/// [OrthancPluginGetConfiguration](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03961).
 pub fn get_configuration(
     context: *mut bindings::OrthancPluginContext,
 ) -> Option<OrthancConfigurationBuffer> {
     get_configuration_raw(context).map(|buffer| OrthancConfigurationBuffer { context, buffer })
 }
 
-/// Translation of [OrthancPluginGetConfiguration](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3961).
+/// Translation of [OrthancPluginGetConfiguration](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03961).
 fn get_configuration_raw(
     context: *mut bindings::OrthancPluginContext,
 ) -> Option<MaybeUninit<*mut std::ffi::c_char>> {

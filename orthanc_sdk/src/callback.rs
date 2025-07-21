@@ -7,7 +7,7 @@ use http::StatusCode;
 use std::ffi::CString;
 use std::str::FromStr;
 
-/// Translated from [`OrthancPluginRegisterOnChangeCallback`](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l3597).
+/// Translated from [`OrthancPluginRegisterOnChangeCallback`](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03597).
 pub fn register_on_change(
     context: *mut bindings::OrthancPluginContext,
     callback: bindings::OrthancPluginOnChangeCallback,
@@ -22,7 +22,7 @@ pub fn register_on_change(
 
 /// Register a REST callback.
 ///
-/// Translated from [OrthancPluginRegisterRestCallback](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2341)
+/// Translated from [OrthancPluginRegisterRestCallback](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02341)
 pub fn register_rest(
     context: *mut bindings::OrthancPluginContext,
     path_regex: &str,
@@ -42,7 +42,7 @@ pub fn register_rest(
 
 /// Register a REST callback, without locking.
 ///
-/// Translated from [OrthancPluginRegisterRestCallbackNoLock](https://orthanc.uclouvain.be/hg/orthanc/file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h#l2381).
+/// Translated from [OrthancPluginRegisterRestCallbackNoLock](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02381).
 pub fn register_rest_no_lock(
     context: *mut bindings::OrthancPluginContext,
     path_regex: &str,
