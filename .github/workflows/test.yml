@@ -24,6 +24,8 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Codegen
         run: nix develop -c just
+      - name: Setup rust cache
+        uses: Swatinem/rust-cache@v2
       - name: Build
         run: cd example_plugin && nix develop -c just build
       - name: Pull images
