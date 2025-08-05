@@ -136,7 +136,7 @@ pub extern "C" fn OrthancPluginInitialize(
 
     // register plugin callback functions
     orthanc_sdk::register_on_change(context, Some(on_change_callback));
-    orthanc_sdk::register_rest_no_lock(context, "/rustexample/add", Some(rest_callback));
+    orthanc_sdk::register_rest_no_lock(context, c"/rustexample/add", Some(rest_callback));
 
     // return a successful error code.
     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success

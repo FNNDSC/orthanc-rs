@@ -18,12 +18,14 @@ Please refer to the [example plugin](../example_plugin/src/plugin.rs).
 #[non_exhaustive]
 ```
 
-- [x] Rust bindings for `OrthancCPlugin.h`: [`orthanc_sdk::bindings`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/bindings/index.html)
-- [x] Read the Orthanc configuration JSON: [`orthanc_sdk::get_configuration`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/fn.get_configuration.html)
-- [x] [`tracing::Subscriber`](https://docs.rs/tracing-core/0.1.34/tracing_core/subscriber/trait.Subscriber.html)implementation for Orthanc's built-in logging: [`orthanc_sdk::OrthancLogger`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/struct.OrthancLogger.html)
-- [x] Helper for handling on change events in a background thread: [`orthanc_sdk::utils::OnChangeThread`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/utils/struct.OnChangeThread.html)
-- [x] Register REST callbacks: [`orthanc_sdk::register_rest`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/fn.register_rest.html) and [`orthanc_sdk::register_rest_no_lock`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/fn.register_rest_no_lock.html)
-- [x] Call the built-in Orthanc API: [`DicomClient`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/api/struct.DicomClient.html) and [`GeneralClient`](https://docs.rs/orthanc_sdk/latest/orthanc_sdk/api/struct.GeneralClient.html)
+- [x] Rust bindings for `OrthancCPlugin.h`: [`orthanc_sdk::bindings`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/bindings/index.html)
+- [x] Read the Orthanc configuration JSON: [`orthanc_sdk::get_configuration`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/fn.get_configuration.html)
+- [x] [`tracing::Subscriber`](https://docs.rs/tracing-core/0.1.34/tracing_core/subscriber/trait.Subscriber.html)implementation for Orthanc's built-in logging: [`orthanc_sdk::OrthancLogger`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/struct.OrthancLogger.html)
+- [x] Helper for handling on change events in a background thread: [`orthanc_sdk::utils::OnChangeThread`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/utils/struct.OnChangeThread.html)
+- [x] Register REST callbacks: [`orthanc_sdk::register_rest`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/fn.register_rest.html) and [`orthanc_sdk::register_rest_no_lock`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/fn.register_rest_no_lock.html)
+- [x] Call the built-in Orthanc API: [`DicomClient`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/api/struct.DicomClient.html) and [`GeneralClient`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/api/struct.GeneralClient.html)
+- [x] Easily package a static web application as an Orthanc plugin: [`orthanc_sdk::serve_static_file`](https://docs.rs/orthanc_sdk/0.2.0/orthanc_sdk/fn.serve_static_file.html).
+  - Real example: https://github.com/FNNDSC/orthanc-patient-list/
 - [ ] Support HTTP headers when calling the Orthanc built-in API
 - [ ] Support specific HTTP responses using [`OrthancPluginSendMethodNotAllowed`](https://orthanc.uclouvain.be/sdk/group__REST.html#ga1a060d2b2aba0172eb68ebb69d26722c), [`OrthancPluginRedirect`](https://orthanc.uclouvain.be/sdk/group__REST.html#ga92aebd39a92e2bdbdb1b1dc5f60cadd5), [`OrthancPluginSendUnauthorized`](https://orthanc.uclouvain.be/sdk/group__REST.html#ga0c09ccbddb26011ba30eeddf94819d52)
 - [ ] Support HTTP multi-part answer using [`OrthancPluginStartMultipartAnswer`](https://orthanc.uclouvain.be/sdk/group__REST.html#gadfae0b05c5890fe07fd4762ac58dfed4)

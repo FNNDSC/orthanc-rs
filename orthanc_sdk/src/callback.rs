@@ -1,11 +1,10 @@
 //! Orthanc plugin initialization callback registration functions.
 
 use crate::bindings;
-use crate::helpers::must_invoke_service;
+use crate::helpers::{invoke_service, must_invoke_service};
 use crate::http::{Request, Response};
 use http::StatusCode;
-use std::ffi::CString;
-use std::str::FromStr;
+use std::ffi::{CStr, CString};
 
 /// Translated from [`OrthancPluginRegisterOnChangeCallback`](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03597).
 pub fn register_on_change(
@@ -45,12 +44,11 @@ pub fn register_rest(
 /// Translated from [OrthancPluginRegisterRestCallbackNoLock](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l02381).
 pub fn register_rest_no_lock(
     context: *mut bindings::OrthancPluginContext,
-    path_regex: &str,
+    path_regex: &std::ffi::CStr,
     callback: bindings::OrthancPluginRestCallback,
 ) {
-    let path_regex_c = CString::new(path_regex).unwrap();
     let params = bindings::_OrthancPluginRestCallback {
-        pathRegularExpression: path_regex_c.as_ptr(),
+        pathRegularExpression: path_regex.as_ptr(),
         callback,
     };
     must_invoke_service(
@@ -89,8 +87,7 @@ pub fn create_json_rest_callback<
                 return bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError;
             }
         };
-        let mime_type = CString::new("application/json").unwrap();
-        respond_with_body(context, output, res.code, body, mime_type)
+        respond_with_body(context, output, res.code, body, c"application/json")
     } else {
         respond_no_body(context, output, res.code)
     }
@@ -99,19 +96,16 @@ pub fn create_json_rest_callback<
 /// Respond to an HTTP request with a body.
 ///
 /// Note: this function handles the "must use" requirements of Orthanc. See
-/// https://orthanc.uclouvain.be/sdk/group__REST.html#gadc077803cf6cfc5306491097f9063627
+/// <https://orthanc.uclouvain.be/sdk/group__REST.html#gadc077803cf6cfc5306491097f9063627>
 fn respond_with_body(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
     body: Vec<u8>,
-    mime_type: CString,
+    mime_type: &CStr,
 ) -> bindings::OrthancPluginErrorCode {
     match code {
-        StatusCode::OK => {
-            answer_buffer(context, output, body, mime_type);
-            bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
-        }
+        StatusCode::OK => answer_buffer(context, output, &body, mime_type),
         StatusCode::MOVED_PERMANENTLY => {
             // TODO must use ::OrthancPluginRedirect()
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_NotImplemented
@@ -147,20 +141,15 @@ fn respond_with_body(
 /// Respond to an HTTP request without a body.
 ///
 /// Note: this function handles the "must use" logic required by Orthanc. See
-/// https://orthanc.uclouvain.be/sdk/group__REST.html#ga61be84f0a8886c6c350b20055f97ddc5
-fn respond_no_body(
+/// <https://orthanc.uclouvain.be/sdk/group__REST.html#ga61be84f0a8886c6c350b20055f97ddc5>
+pub(crate) fn respond_no_body(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
 ) -> bindings::OrthancPluginErrorCode {
     match code {
         StatusCode::OK => {
-            answer_buffer(
-                context,
-                output,
-                Vec::new(),
-                CString::from_str("text/plain").unwrap(),
-            );
+            answer_buffer(context, output, &[], c"text/plain");
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
         StatusCode::MOVED_PERMANENTLY => {
@@ -195,20 +184,40 @@ fn respond_no_body(
     }
 }
 
-/// Answer to a REST request. Translated from `OrthancPluginAnswerBuffer`.
-fn answer_buffer(
+/// Answer to a REST request by signaling that the queried URI does not support this method.
+///
+/// Translated from [`OrthancPluginSendMethodNotAllowed`](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03094).
+#[cfg(feature = "webapp")]
+pub(crate) fn send_method_not_allowed(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
-    body: Vec<u8>,
-    mime_type: CString,
-) {
+    allowed_methods: &std::ffi::CStr,
+) -> bindings::OrthancPluginErrorCode {
+    let params = bindings::_OrthancPluginOutputPlusArgument {
+        output,
+        argument: allowed_methods.as_ptr(),
+    };
+    invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_SendMethodNotAllowed,
+        params,
+    )
+}
+
+/// Answer to a REST request. Translated from `OrthancPluginAnswerBuffer`.
+pub(crate) fn answer_buffer(
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
+    body: &[u8],
+    mime_type: &CStr,
+) -> bindings::OrthancPluginErrorCode {
     let params = bindings::_OrthancPluginAnswerBuffer {
         output,
         answer: body.as_ptr() as *const _,
         answerSize: body.len() as u32,
         mimeType: mime_type.as_ptr(),
     };
-    must_invoke_service(
+    invoke_service(
         context,
         bindings::_OrthancPluginService__OrthancPluginService_AnswerBuffer,
         params,
