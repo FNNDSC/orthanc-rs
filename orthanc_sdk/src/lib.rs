@@ -18,6 +18,9 @@
 pub mod bindings;
 pub use orthanc_client_ogen::models as openapi;
 
+#[cfg(feature = "webapp")]
+mod webapp;
+
 pub mod api;
 pub mod http;
 pub mod utils;

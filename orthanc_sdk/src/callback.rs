@@ -1,7 +1,7 @@
 //! Orthanc plugin initialization callback registration functions.
 
 use crate::bindings;
-use crate::helpers::must_invoke_service;
+use crate::helpers::{invoke_service, must_invoke_service};
 use crate::http::{Request, Response};
 use http::StatusCode;
 use std::ffi::CString;
@@ -99,7 +99,7 @@ pub fn create_json_rest_callback<
 /// Respond to an HTTP request with a body.
 ///
 /// Note: this function handles the "must use" requirements of Orthanc. See
-/// https://orthanc.uclouvain.be/sdk/group__REST.html#gadc077803cf6cfc5306491097f9063627
+/// <https://orthanc.uclouvain.be/sdk/group__REST.html#gadc077803cf6cfc5306491097f9063627>
 fn respond_with_body(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
@@ -147,8 +147,8 @@ fn respond_with_body(
 /// Respond to an HTTP request without a body.
 ///
 /// Note: this function handles the "must use" logic required by Orthanc. See
-/// https://orthanc.uclouvain.be/sdk/group__REST.html#ga61be84f0a8886c6c350b20055f97ddc5
-fn respond_no_body(
+/// <https://orthanc.uclouvain.be/sdk/group__REST.html#ga61be84f0a8886c6c350b20055f97ddc5>
+pub(crate) fn respond_no_body(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     code: StatusCode,
@@ -193,6 +193,25 @@ fn respond_no_body(
             bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
         }
     }
+}
+
+/// Answer to a REST request by signaling that the queried URI does not support this method.
+///
+/// Translated from [`OrthancPluginSendMethodNotAllowed`](https://orthanc.uclouvain.be/sdk/OrthancCPlugin_8h_source.html#l03094).
+pub(crate) fn send_method_not_allowed(
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
+    allowed_methods: &std::ffi::CStr,
+) -> bindings::OrthancPluginErrorCode {
+    let params = bindings::_OrthancPluginOutputPlusArgument {
+        output,
+        argument: allowed_methods.as_ptr(),
+    };
+    invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_SendMethodNotAllowed,
+        params,
+    )
 }
 
 /// Answer to a REST request. Translated from `OrthancPluginAnswerBuffer`.
