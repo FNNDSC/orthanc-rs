@@ -1,4 +1,5 @@
-//! Orthanc plugin initialization callback registration functions.
+//! Direct translations (i.e. "low-level") of Orthanc C SDK functions
+//! and some helper functions.
 
 use crate::bindings;
 use crate::helpers::{invoke_service, must_invoke_service};
@@ -222,6 +223,25 @@ pub(crate) fn answer_buffer(
         bindings::_OrthancPluginService__OrthancPluginService_AnswerBuffer,
         params,
     )
+}
+
+/// Sets a HTTP header in the HTTP answer. Translated from `OrthancPluginSetHttpHeader`.
+pub(crate) fn set_http_header(
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
+    key: &CStr,
+    value: &CStr,
+) {
+    let params = bindings::_OrthancPluginSetHttpHeader {
+        output,
+        key: key.as_ptr(),
+        value: value.as_ptr(),
+    };
+    must_invoke_service(
+        context,
+        bindings::_OrthancPluginService__OrthancPluginService_SetHttpHeader,
+        params,
+    );
 }
 
 /// Send an HTTP status, with a custom body.

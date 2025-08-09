@@ -36,4 +36,4 @@ pub use tracing_subscriber::OrthancLogger;
 #[cfg(feature = "webapp")]
 mod webapp;
 #[cfg(feature = "webapp")]
-pub use webapp::serve_static_file;
+pub use webapp::*;

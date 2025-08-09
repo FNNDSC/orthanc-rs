@@ -80,6 +80,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "base32"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "022dfe9eb35f19ebbcb51e0b40a5ab759f46ad60cadf7297e0bd085afb50e076"
+
+[[package]]
 name = "base64"
 version = "0.22.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -819,6 +825,7 @@ dependencies = [
 name = "orthanc_sdk"
 version = "0.2.0"
 dependencies = [
+ "base32",
  "compact_str",
  "http",
  "include_dir",
@@ -826,6 +833,7 @@ dependencies = [
  "orthanc_api",
  "orthanc_client_ogen",
  "pretty_assertions",
+ "rapidhash",
  "rstest",
  "serde",
  "serde_json",
@@ -893,6 +901,12 @@ checksum = "1885c039570dc00dcb4ff087a89e185fd56bae234ddc7f056a945bf36467248d"
 dependencies = [
  "proc-macro2",
 ]
+
+[[package]]
+name = "rapidhash"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "efee4b7317469c6c6e7fdeee3d094313af846a97678d6ed971d83a852d730083"
 
 [[package]]
 name = "ref-cast"
