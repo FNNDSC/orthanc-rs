@@ -1,8 +1,11 @@
+//! Utilities for packaging a static web app as an Orthanc plugin. See [`serve_static_file`].
+
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 
 use http::StatusCode;
 
+use crate::error_code::*;
 use crate::sdk::{answer_buffer, set_http_header};
 use crate::send_http_status_code;
 use crate::{bindings, http::Method, send_method_not_allowed};
@@ -14,8 +17,8 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// ## Behavior
 ///
 /// - The paths "" and "/" are mapped to `index.html`.
-/// - URI hash and query components (i.e. everything after and including `#` ori
-///   `?`) are stripped.
+/// - URI hash and query components (i.e. everything after and including `#`
+///   and `?`) are stripped.
 /// - "Client-side routing" not (yet) supported.
 ///
 /// ## Example
@@ -24,7 +27,6 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// `example_directory` under the path `/my_webapp`:
 ///
 /// ```
-/// # #![allow(non_snake_case)]
 /// use std::sync::RwLock;
 /// use orthanc_sdk::bindings;
 /// use include_dir::include_dir;
@@ -39,7 +41,6 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// /// Directory containing static web application bundle (HTML and other files).
 /// const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/example_directory");
 ///
-/// #[allow(clippy::not_unsafe_ptr_arg_deref)]
 /// #[unsafe(no_mangle)]
 /// pub extern "C" fn OrthancPluginInitialize(
 ///     context: *mut bindings::OrthancPluginContext,
@@ -50,6 +51,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
 /// }
 ///
+/// #[unsafe(no_mangle)]
 /// extern "C" fn rest_callback(
 ///     output: *mut bindings::OrthancPluginRestOutput,
 ///     url: *const std::ffi::c_char,
@@ -81,34 +83,36 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// }
 /// ```
 ///
+/// A real-life example can be found here:
+/// <https://github.com/FNNDSC/orthanc-patient-list/blob/release/20250810/plugin/src/plugin.rs>
+///
+/// ## Performance
+///
+/// Call [`prepare_bundle`] during `OrthancPluginInitialize()` to pre-compute a
+/// value for the `ETag` response header for each file and optimize the data
+/// structure representing the bundle.
+///
 /// ## Parameters
 ///
 /// - `context`: The Orthanc plugin context, as received by `OrthancPluginInitialize()`.`
 /// - `output`: The HTTP connection to the client application.
 /// - `url`: The URL, as received by the callback passed to [`register_rest_no_lock`].
 /// - `request`: The incoming request parameters, as received by the callback passed to [`register_rest_no_lock`].
-/// - `dir`: Static files directory imported by [`include_dir!`]
+/// - `bundle`: web bundle to serve&mdash;can either be the value of [`include_dir!`](include_dir::include_dir)
+///   or [`prepare_bundle`].
 /// - `base`: Base path the web app is being served from.
-///
-/// ## See Also
-///
-/// [`serve_prepared_file`] is more performant than `serve_static_file`.
 ///
 /// [`register_rest_no_lock`]: crate::register_rest_no_lock
 /// [`include_dir!`]: include_dir::include_dir
-/// [`serve_prepared_file`]: crate::serve_prepared_file
 pub fn serve_static_file(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
-    dir: &include_dir::Dir,
+    bundle: &impl WebBundle,
     base: &str,
 ) -> bindings::OrthancPluginErrorCode {
-    match serve_static_files_impl(context, output, url, request, dir, base) {
-        Ok(code) => code,
-        Err(code) => code,
-    }
+    serve_static_files_impl(context, output, url, request, bundle, base).into_code()
 }
 
 fn serve_static_files_impl(
@@ -116,9 +120,9 @@ fn serve_static_files_impl(
     output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
-    dir: &include_dir::Dir,
+    bundle: &impl WebBundle,
     base: &str,
-) -> Result<bindings::OrthancPluginErrorCode, bindings::OrthancPluginErrorCode> {
+) -> ErrorCodeResult {
     if !method_is_get(request) {
         let code = send_method_not_allowed(context, output, c"GET");
         return Ok(code);
@@ -126,16 +130,86 @@ fn serve_static_files_impl(
     let c_url = unsafe { CStr::from_ptr(url) };
     let r_url = c_url
         .to_str()
-        .map_err(|_| send_http_status_code(context, output, StatusCode::NOT_FOUND.as_u16()))?;
+        .map_err(|_| send_not_found(context, output))?;
     let path = relative_path_of(base, r_url);
-    let code = if let Some(file) = dir.get_file(path) {
-        let mime = mime_guess::from_path(path).first_or_octet_stream();
-        let c_mime = CString::new(mime.as_ref()).unwrap();
-        answer_buffer(context, output, file.contents(), &c_mime)
+    let code = if let Some(file) = bundle.get_file(path) {
+        if let Some(etag) = file.etag() {
+            set_http_header(context, output, c"ETag", etag).into_result()
+        } else {
+            Ok(bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success)
+        }
+        .and_then(|_| answer_buffer(context, output, file.body(), file.mime()).into_result())
+        .into_code()
     } else {
-        respond_no_body(context, output, StatusCode::NOT_FOUND)
+        send_not_found(context, output)
     };
     Ok(code)
+}
+
+fn send_not_found(
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
+) -> bindings::OrthancPluginErrorCode {
+    send_http_status_code(context, output, StatusCode::NOT_FOUND.as_u16())
+}
+
+/// Bundle of files to be served by Orthanc's web server.
+pub trait WebBundle {
+    /// Associated type representing file obtained from this bundle.
+    type File: WebFile;
+
+    /// Get a file from this bundle.
+    fn get_file(&self, path: &str) -> Option<Self::File>;
+}
+
+impl<'a> WebBundle for include_dir::Dir<'a> {
+    type File = IncludedFile<'a>;
+
+    fn get_file(&self, path: &str) -> Option<Self::File> {
+        self.get_file(path).map(IncludedFile::from)
+    }
+}
+
+/// A file which can be served by Orthanc's web server.
+pub trait WebFile {
+    /// File contents as bytes.
+    fn body(&self) -> &[u8];
+
+    /// File MIME type essence.
+    fn mime(&self) -> &CStr;
+
+    /// Value for HTTP `ETag` response header.
+    fn etag(&self) -> Option<&CStr>;
+}
+
+/// A wrapper for [`include_dir::File`] with a known MIME type.
+pub struct IncludedFile<'a> {
+    file: &'a include_dir::File<'a>,
+    mime: CString,
+}
+
+impl<'a> From<&'a include_dir::File<'a>> for IncludedFile<'a> {
+    fn from(file: &'a include_dir::File) -> Self {
+        let guess = mime_guess::from_path(file.path()).first_or_octet_stream();
+        IncludedFile {
+            file,
+            mime: CString::new(guess.essence_str()).unwrap(),
+        }
+    }
+}
+
+impl WebFile for IncludedFile<'_> {
+    fn body(&self) -> &[u8] {
+        self.file.contents()
+    }
+
+    fn mime(&self) -> &CStr {
+        &self.mime
+    }
+
+    fn etag(&self) -> Option<&CStr> {
+        None
+    }
 }
 
 /// Strip hash, query, and leading '/' from a URI.
@@ -160,84 +234,69 @@ fn method_is_get(request: *const bindings::OrthancPluginHttpRequest) -> bool {
         .unwrap_or(false)
 }
 
-/// Similar to [`serve_static_file`][crate::serve_static_file] but slightly
-/// pre-optimized. The `ETag` response header will be set.
-///
-/// HINT: the `files` parameter should be produced by [`prepare_webfiles`][crate::prepare_webfiles].
-pub fn serve_prepared_file(
-    context: *mut bindings::OrthancPluginContext,
-    output: *mut bindings::OrthancPluginRestOutput,
-    url: *const std::os::raw::c_char,
-    request: *const bindings::OrthancPluginHttpRequest,
-    files: &PreparedWebFiles,
-    base: &str,
-) -> bindings::OrthancPluginErrorCode {
-    match serve_prepared_file_impl(context, output, url, request, files, base) {
-        Ok(code) => code,
-        Err(code) => code,
-    }
-}
+/// Map of _"prepared"_ web files to be served by Orthanc's web server.
+pub type PreparedBundle<'a> = HashMap<&'a str, PreparedFile<'a>>;
 
-fn serve_prepared_file_impl(
-    context: *mut bindings::OrthancPluginContext,
-    output: *mut bindings::OrthancPluginRestOutput,
-    url: *const std::os::raw::c_char,
-    request: *const bindings::OrthancPluginHttpRequest,
-    files: &PreparedWebFiles,
-    base: &str,
-) -> Result<bindings::OrthancPluginErrorCode, bindings::OrthancPluginErrorCode> {
-    if !method_is_get(request) {
-        let code = send_method_not_allowed(context, output, c"GET");
-        return Ok(code);
-    }
-    let c_url = unsafe { CStr::from_ptr(url) };
-    let r_url = c_url
-        .to_str()
-        .map_err(|_| respond_no_body(context, output, StatusCode::NOT_FOUND))?;
-    let path = relative_path_of(base, r_url);
-    let code = if let Some(file) = files.get(path) {
-        set_http_header(context, output, c"ETag", &file.etag);
-        answer_buffer(context, output, file.body, &file.mime)
-    } else {
-        respond_no_body(context, output, StatusCode::NOT_FOUND)
-    };
-    Ok(code)
-}
-
-/// A static file to be served by Orthanc's web server.
-pub struct WebFile<'a> {
+/// File data with pre-computed MIME type and ETag value.
+pub struct PreparedFile<'a> {
     body: &'a [u8],
-    etag: CString,
     mime: CString,
+    etag: CString,
 }
 
-impl<'a> From<&'a include_dir::File<'a>> for WebFile<'a> {
+impl WebFile for &PreparedFile<'_> {
+    fn body(&self) -> &[u8] {
+        self.body
+    }
+
+    fn mime(&self) -> &CStr {
+        &self.mime
+    }
+
+    fn etag(&self) -> Option<&CStr> {
+        Some(&self.etag)
+    }
+}
+
+impl<'a> From<&'a include_dir::File<'a>> for PreparedFile<'a> {
     fn from(value: &'a include_dir::File<'a>) -> Self {
-        let mime = mime_guess::from_path(value.path()).first_or_octet_stream();
-        Self {
+        let guess = mime_guess::from_path(value.path()).first_or_octet_stream();
+        PreparedFile {
             body: value.contents(),
+            mime: CString::new(guess.essence_str()).unwrap(),
             etag: etag_of(value),
-            mime: CString::new(mime.essence_str()).unwrap(),
         }
     }
 }
 
-/// Map of static web files to be served by Orthanc's web server.
-pub type PreparedWebFiles<'a> = HashMap<&'a str, WebFile<'a>>;
-
-/// Prepare static files for web serving (guess MIME type and generate ETag value).
+/// Prepare static files for web serving (guess MIME type and generate `ETag` header value).
 ///
 /// ## Example
 ///
 /// ```
-/// use std::sync::LazyLock;
+/// use std::sync::RwLock;
 /// use include_dir::include_dir;
-/// use orthanc_sdk::{PreparedWebFiles, prepare_webfiles};
+/// use orthanc_sdk::{bindings, webapp::PreparedBundle};
 ///
 /// const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/example_directory");
-/// const PREPARED_FILES: LazyLock<PreparedWebFiles<'static>> = LazyLock::new(|| prepare_webfiles(&DIST));
+/// static PREPARED_BUNDLE: RwLock<Option<PreparedBundle<'static>>> = RwLock::new(None);
+///
+/// #[unsafe(no_mangle)]
+/// pub extern "C" fn OrthancPluginInitialize(
+///     context: *mut bindings::OrthancPluginContext,
+/// ) -> bindings::OrthancPluginErrorCode {
+///     let mut prepared_bundle = PREPARED_BUNDLE.try_write().unwrap();
+///     *prepared_bundle = Some(orthanc_sdk::webapp::prepare_bundle(&DIST));
+///     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
+/// }
+///
+/// #[unsafe(no_mangle)]
+/// pub extern "C" fn OrthancPluginFinalize() {
+///     let mut prepared_bundle = PREPARED_BUNDLE.try_write().unwrap();
+///     *prepared_bundle = None;
+/// }
 /// ```
-pub fn prepare_webfiles<'a>(dir: &'a include_dir::Dir) -> PreparedWebFiles<'a> {
+pub fn prepare_bundle<'a>(dir: &'a include_dir::Dir) -> PreparedBundle<'a> {
     /*
      * It would be cool if ETag header could be assigned to each file at compile time,
      * but this would be a huge amount of work to implement because:
@@ -255,7 +314,7 @@ pub fn prepare_webfiles<'a>(dir: &'a include_dir::Dir) -> PreparedWebFiles<'a> {
     HashMap::from_iter(to_webfile_entries(dir))
 }
 
-fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, WebFile<'a>)> {
+fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, PreparedFile<'a>)> {
     dir.entries()
         .into_iter()
         .flat_map(|entry| match entry {
@@ -265,7 +324,7 @@ fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, WebFile<'a
                     .path()
                     .to_str()
                     .expect("Web bundle contains a non-unicode path");
-                vec![(path, WebFile::from(file))]
+                vec![(path, PreparedFile::from(file))]
             }
         })
         .collect()
