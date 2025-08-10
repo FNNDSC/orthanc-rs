@@ -14,12 +14,17 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///
 /// Typically, this should be called by the function which was passed to [`register_rest_no_lock`].
 ///
+/// ## Pre-conditions
+///
+/// The regular expression passed to [`register_rest_no_lock`] _must_ match the
+/// relative path as the first capture group. For example, to serve the bundle
+/// under a prefix "/my_webapp", use the value `c"/my_webapp/?(.*)`.
+///
 /// ## Behavior
 ///
 /// - The paths "" and "/" are mapped to `index.html`.
-/// - URI hash and query components (i.e. everything after and including `#`
-///   and `?`) are stripped.
-/// - "Client-side routing" not (yet) supported.
+/// - Client-side routing is not supported (but should be easy to implement,
+///   please open a feature or pull request on [GitHub](https://github.com/FNNDSC/orthanc-rs/).)
 ///
 /// ## Example
 ///
@@ -47,7 +52,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// ) -> bindings::OrthancPluginErrorCode {
 ///     let mut global_context = CONTEXT.try_write().unwrap();
 ///     *global_context = Some(OrthancContext(context));
-///     orthanc_sdk::register_rest_no_lock(context, c"/my_webapp(/.*)?", Some(rest_callback));
+///     orthanc_sdk::register_rest_no_lock(context, c"/my_webapp/?(.*)", Some(rest_callback));
 ///     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
 /// }
 ///
@@ -60,7 +65,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///     if let Ok(global_context) = CONTEXT.try_read().as_ref()
 ///         && let Some(context) = global_context.as_ref()
 ///     {
-///         orthanc_sdk::serve_static_file(context.0, output, url, request, &DIST, "/my_webapp")
+///         orthanc_sdk::serve_static_file(context.0, output, request, &DIST)
 ///     } else {
 ///         bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
 ///     }
@@ -96,42 +101,34 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///
 /// - `context`: The Orthanc plugin context, as received by `OrthancPluginInitialize()`.`
 /// - `output`: The HTTP connection to the client application.
-/// - `url`: The URL, as received by the callback passed to [`register_rest_no_lock`].
 /// - `request`: The incoming request parameters, as received by the callback passed to [`register_rest_no_lock`].
 /// - `bundle`: web bundle to serve&mdash;can either be the value of [`include_dir!`](include_dir::include_dir)
 ///   or [`prepare_bundle`].
-/// - `base`: Base path the web app is being served from.
 ///
 /// [`register_rest_no_lock`]: crate::register_rest_no_lock
 /// [`include_dir!`]: include_dir::include_dir
 pub fn serve_static_file(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
-    url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
     bundle: &impl WebBundle,
-    base: &str,
 ) -> bindings::OrthancPluginErrorCode {
-    serve_static_file_impl(context, output, url, request, bundle, base).into_code()
+    serve_static_file_impl(context, output, request, bundle).into_code()
 }
 
 fn serve_static_file_impl(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
-    url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
     bundle: &impl WebBundle,
-    base: &str,
 ) -> ErrorCodeResult {
     if !method_is_get(request) {
         return send_method_not_allowed(context, output, c"GET").into_result();
     }
-    let c_url = unsafe { CStr::from_ptr(url) };
-    let r_url = c_url
-        .to_str()
-        .map_err(|_| send_not_found(context, output))?;
-    let path = relative_path_of(base, r_url);
-    let code = if let Some(file) = bundle.get_file(path) {
+    let path = unsafe { first_group_of(request) }.ok_or_else(|| send_not_found(context, output))?;
+    // NOTE: Orthanc strips hash `#` and query `?` components from the URI for us
+    let resolved_path = if path.is_empty() { "index.html" } else { path };
+    let code = if let Some(file) = bundle.get_file(resolved_path) {
         if let Some(etag) = file.etag() {
             set_http_header(context, output, c"ETag", etag).into_result()
         } else {
@@ -150,6 +147,17 @@ fn send_not_found(
     output: *mut bindings::OrthancPluginRestOutput,
 ) -> bindings::OrthancPluginErrorCode {
     send_http_status_code(context, output, StatusCode::NOT_FOUND.as_u16())
+}
+
+unsafe fn first_group_of<'a>(
+    request: *const bindings::OrthancPluginHttpRequest,
+) -> Option<&'a str> {
+    let count = (unsafe { *request }).groupsCount;
+    if count < 1 {
+        return None;
+    }
+    let c_str = unsafe { CStr::from_ptr(*(*request).groups) };
+    c_str.to_str().ok()
 }
 
 /// Bundle of files to be served by Orthanc's web server.
@@ -213,22 +221,6 @@ impl WebFile for IncludedFile<'_> {
 
     fn etag(&self) -> Option<&CStr> {
         None
-    }
-}
-
-/// Strip hash, query, and leading '/' from a URI.
-fn relative_path_of<'a>(base: &str, uri: &'a str) -> &'a str {
-    let without_hash = uri.split_once('#').map(|(l, _)| l).unwrap_or(uri);
-    let rel_path = without_hash
-        .split_once('?')
-        .map(|(l, _)| l)
-        .unwrap_or(without_hash)
-        .trim_start_matches(base)
-        .trim_start_matches('/');
-    if rel_path.is_empty() {
-        "index.html"
-    } else {
-        rel_path
     }
 }
 
@@ -349,20 +341,4 @@ fn etag_of(file: &include_dir::File) -> CString {
     let hash = rapidhash::v3::rapidhash_v3(file.contents());
     let encoded = base32::encode(base32::Alphabet::Crockford, &hash.to_le_bytes());
     CString::new(encoded).unwrap()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use pretty_assertions::assert_eq;
-    use rstest::*;
-
-    #[rstest]
-    #[case("/my", "index.html")]
-    #[case("/my/", "index.html")]
-    #[case("/my/stuff", "stuff")]
-    fn test_relative_path_of(#[case] path: &str, #[case] expected: &str) {
-        let actual = relative_path_of("/my", path);
-        assert_eq!(actual, expected)
-    }
 }
