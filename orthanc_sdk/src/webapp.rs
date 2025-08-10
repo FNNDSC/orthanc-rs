@@ -104,23 +104,23 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///
 /// [`register_rest_no_lock`]: crate::register_rest_no_lock
 /// [`include_dir!`]: include_dir::include_dir
-pub fn serve_static_file<'a>(
+pub fn serve_static_file(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
-    bundle: &'a impl WebBundle<'a>,
+    bundle: &impl WebBundle,
     base: &str,
 ) -> bindings::OrthancPluginErrorCode {
     serve_static_file_impl(context, output, url, request, bundle, base).into_code()
 }
 
-fn serve_static_file_impl<'a>(
+fn serve_static_file_impl(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     url: *const std::os::raw::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
-    bundle: &'a impl WebBundle<'a>,
+    bundle: &impl WebBundle,
     base: &str,
 ) -> ErrorCodeResult {
     if !method_is_get(request) {
@@ -153,18 +153,23 @@ fn send_not_found(
 }
 
 /// Bundle of files to be served by Orthanc's web server.
-pub trait WebBundle<'a> {
+pub trait WebBundle {
     /// Associated type representing file obtained from this bundle.
-    type File: WebFile;
+    type File<'b>: WebFile
+    where
+        // https://github.com/rust-lang/rust/issues/87479
+        Self: 'b;
 
     /// Get a file from this bundle.
-    fn get_file(&'a self, path: &'a str) -> Option<Self::File>;
+    fn get_file<'a>(&'a self, path: &'a str) -> Option<Self::File<'a>>;
 }
 
-impl<'a> WebBundle<'a> for include_dir::Dir<'a> {
-    type File = IncludedFile<'a>;
-
-    fn get_file(&self, path: &str) -> Option<Self::File> {
+impl WebBundle for include_dir::Dir<'_> {
+    type File<'b>
+        = IncludedFile<'b>
+    where
+        Self: 'b;
+    fn get_file<'a>(&'a self, path: &'a str) -> Option<Self::File<'a>> {
         self.get_file(path).map(IncludedFile::from)
     }
 }
@@ -236,10 +241,13 @@ fn method_is_get(request: *const bindings::OrthancPluginHttpRequest) -> bool {
 /// Map of _"prepared"_ web files to be served by Orthanc's web server.
 pub type PreparedBundle<'a> = HashMap<&'a str, PreparedFile<'a>>;
 
-impl<'a> WebBundle<'a> for PreparedBundle<'a> {
-    type File = &'a PreparedFile<'a>;
+impl WebBundle for PreparedBundle<'_> {
+    type File<'b>
+        = &'b PreparedFile<'b>
+    where
+        Self: 'b;
 
-    fn get_file(&'a self, path: &'a str) -> Option<Self::File> {
+    fn get_file<'a>(&'a self, path: &'a str) -> Option<Self::File<'a>> {
         self.get(path)
     }
 }
