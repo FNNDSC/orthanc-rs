@@ -1,6 +1,6 @@
 use std::ffi::CString;
 
-use super::helpers::invoke_service;
+use super::sdk::invoke_service;
 use crate::bindings;
 use tracing::{Level, span};
 

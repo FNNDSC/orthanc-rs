@@ -3,7 +3,8 @@ use std::ffi::{CStr, CString};
 
 use http::StatusCode;
 
-use crate::callback::{answer_buffer, respond_no_body, set_http_header};
+use crate::sdk::{answer_buffer, set_http_header};
+use crate::send_http_status_code;
 use crate::{bindings, http::Method, send_method_not_allowed};
 
 /// Create a REST callback handler which serves a static directory.
@@ -125,7 +126,7 @@ fn serve_static_files_impl(
     let c_url = unsafe { CStr::from_ptr(url) };
     let r_url = c_url
         .to_str()
-        .map_err(|_| respond_no_body(context, output, StatusCode::NOT_FOUND))?;
+        .map_err(|_| send_http_status_code(context, output, StatusCode::NOT_FOUND.as_u16()))?;
     let path = relative_path_of(base, r_url);
     let code = if let Some(file) = dir.get_file(path) {
         let mime = mime_guess::from_path(path).first_or_octet_stream();

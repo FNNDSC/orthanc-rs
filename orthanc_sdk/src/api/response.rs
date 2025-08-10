@@ -1,5 +1,5 @@
 use crate::bindings;
-use crate::helpers::free_memory_buffer;
+use crate::sdk::free_memory_buffer;
 use crate::http::Response;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};

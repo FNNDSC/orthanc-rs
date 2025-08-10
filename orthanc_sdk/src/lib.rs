@@ -18,19 +18,21 @@
 #[allow(improper_ctypes)]
 #[allow(unnecessary_transmutes)]
 pub mod bindings;
+mod error_code;
 pub use orthanc_client_ogen::models as openapi;
 
 pub mod api;
 pub mod http;
 pub mod utils;
 
-mod callback;
 mod config;
-mod helpers;
+mod rest;
+mod sdk;
 mod tracing_subscriber;
 
-pub use callback::*;
 pub use config::{OrthancConfigurationBuffer, get_configuration};
+pub use rest::*;
+pub use sdk::*;
 pub use tracing_subscriber::OrthancLogger;
 
 #[cfg(feature = "webapp")]
