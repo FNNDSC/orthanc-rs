@@ -9,6 +9,7 @@ use http::StatusCode;
 use std::ffi::CStr;
 
 /// Create an Orthanc REST callback that uses JSON in its request and response bodies.
+#[allow(clippy::not_unsafe_ptr_arg_deref)]
 pub fn create_json_rest_callback<
     'a,
     S: serde::Serialize,

@@ -27,7 +27,7 @@ impl Query {
         response: PostJsonResponse<MaybeQueryId>,
     ) -> Result<Self, JsonResponseError<MaybeQueryId>> {
         let (id, path) = response.and_then(must_get)?;
-        let client = client.clone();
+        let client = *client;
         Ok(Self { id, path, client })
     }
 
@@ -35,11 +35,7 @@ impl Query {
     pub fn answers(&self) -> Result<Answers, JsonResponseError<Vec<compact_str::CompactString>>> {
         let url = format!("{}/answers", &self.path);
         let answers = self.client.get(url).data()?;
-        Ok(Answers::new(
-            self.client.clone(),
-            self.path.clone(),
-            answers,
-        ))
+        Ok(Answers::new(self.client, self.path.clone(), answers))
     }
 
     /// Retrieve all the answers associated with this query/retrieve operation.

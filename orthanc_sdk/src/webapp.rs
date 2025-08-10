@@ -217,7 +217,7 @@ impl WebFile for IncludedFile<'_> {
 }
 
 /// Strip hash, query, and leading '/' from a URI.
-fn relative_path_of<'a, 'b>(base: &'a str, uri: &'b str) -> &'b str {
+fn relative_path_of<'a>(base: &str, uri: &'a str) -> &'a str {
     let without_hash = uri.split_once('#').map(|(l, _)| l).unwrap_or(uri);
     let rel_path = without_hash
         .split_once('?')
@@ -331,7 +331,7 @@ pub fn prepare_bundle<'a>(dir: &'a include_dir::Dir) -> PreparedBundle<'a> {
 
 fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, PreparedFile<'a>)> {
     dir.entries()
-        .into_iter()
+        .iter()
         .flat_map(|entry| match entry {
             include_dir::DirEntry::Dir(dir) => to_webfile_entries(dir),
             include_dir::DirEntry::File(file) => {

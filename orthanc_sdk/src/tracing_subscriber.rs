@@ -66,6 +66,7 @@ impl tracing::Subscriber for OrthancLogger {
     fn exit(&self, _: &span::Id) {}
 }
 
+#[allow(clippy::if_same_then_else)]
 fn to_orthanc_level(level: &Level, verbose: bool) -> bindings::OrthancPluginLogLevel {
     if level <= &Level::ERROR {
         bindings::OrthancPluginLogLevel_OrthancPluginLogLevel_Error
