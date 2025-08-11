@@ -1,5 +1,6 @@
 //! Utilities for packaging a static web app as an Orthanc plugin. See [`serve_static_file`].
 
+use std::borrow::Cow;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 
@@ -129,6 +130,18 @@ fn serve_static_file_impl(
     // NOTE: Orthanc strips hash `#` and query `?` components from the URI for us
     let resolved_path = if path.is_empty() { "index.html" } else { path };
     let code = if let Some(file) = bundle.get_file(resolved_path) {
+        if file.is_immutable() {
+            set_http_header(
+                context,
+                output,
+                c"Cache-Control",
+                c"public, max-age=31536000, immutable",
+            )
+            .into_result()?;
+        }
+        if let Some(date) = file.last_modified() {
+            set_http_header(context, output, c"Last-Modified", date).into_result()?;
+        }
         if let Some(etag) = file.etag() {
             if let Some(value) = unsafe { get_header(request, c"if-none-match") }
                 && value == etag
@@ -194,7 +207,7 @@ unsafe fn get_header<'a>(
     });
     if let Some(i) = i {
         let value = unsafe {
-            let values = unsafe { std::slice::from_raw_parts((*request).headersValues, len) };
+            let values = std::slice::from_raw_parts((*request).headersValues, len);
             CStr::from_ptr(values[i])
         };
         Some(value)
@@ -235,6 +248,12 @@ pub trait WebFile {
 
     /// Value for HTTP `ETag` response header.
     fn etag(&self) -> Option<&CStr>;
+
+    /// Returns `true` if the header `Cache-Control: immutable` should be used.
+    fn is_immutable(&self) -> bool;
+
+    /// Returns the value for the `Last-Modified` response header.
+    fn last_modified(&self) -> Option<&CStr>;
 }
 
 /// A wrapper for [`include_dir::File`] with a known MIME type.
@@ -265,6 +284,14 @@ impl WebFile for IncludedFile<'_> {
     fn etag(&self) -> Option<&CStr> {
         None
     }
+
+    fn is_immutable(&self) -> bool {
+        false
+    }
+
+    fn last_modified(&self) -> Option<&CStr> {
+        None
+    }
 }
 
 fn method_is_get(request: *const bindings::OrthancPluginHttpRequest) -> bool {
@@ -292,6 +319,21 @@ pub struct PreparedFile<'a> {
     body: &'a [u8],
     mime: CString,
     etag: CString,
+    immutable: bool,
+    date: Cow<'a, CStr>,
+}
+
+impl<'a> PreparedFile<'a> {
+    fn new(file: &'a include_dir::File<'a>, immutable: bool, date: Cow<'a, CStr>) -> Self {
+        let guess = mime_guess::from_path(file.path()).first_or_octet_stream();
+        Self {
+            body: file.contents(),
+            mime: CString::new(guess.essence_str()).unwrap(),
+            etag: etag_of(file),
+            immutable,
+            date,
+        }
+    }
 }
 
 impl WebFile for &PreparedFile<'_> {
@@ -306,16 +348,13 @@ impl WebFile for &PreparedFile<'_> {
     fn etag(&self) -> Option<&CStr> {
         Some(&self.etag)
     }
-}
 
-impl<'a> From<&'a include_dir::File<'a>> for PreparedFile<'a> {
-    fn from(value: &'a include_dir::File<'a>) -> Self {
-        let guess = mime_guess::from_path(value.path()).first_or_octet_stream();
-        PreparedFile {
-            body: value.contents(),
-            mime: CString::new(guess.essence_str()).unwrap(),
-            etag: etag_of(value),
-        }
+    fn is_immutable(&self) -> bool {
+        self.immutable
+    }
+
+    fn last_modified(&self) -> Option<&CStr> {
+        Some(&self.date)
     }
 }
 
@@ -329,6 +368,7 @@ impl<'a> From<&'a include_dir::File<'a>> for PreparedFile<'a> {
 /// use orthanc_sdk::{bindings, webapp::PreparedBundle};
 ///
 /// const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/example_directory");
+/// const LAST_MODIFIED: &std::ffi::CStr = c"Tue, 22 Feb 2022 20:20:20 GMT";
 /// static PREPARED_BUNDLE: RwLock<Option<PreparedBundle<'static>>> = RwLock::new(None);
 ///
 /// #[unsafe(no_mangle)]
@@ -336,7 +376,7 @@ impl<'a> From<&'a include_dir::File<'a>> for PreparedFile<'a> {
 ///     context: *mut bindings::OrthancPluginContext,
 /// ) -> bindings::OrthancPluginErrorCode {
 ///     let mut prepared_bundle = PREPARED_BUNDLE.try_write().unwrap();
-///     *prepared_bundle = Some(orthanc_sdk::webapp::prepare_bundle(&DIST));
+///     *prepared_bundle = Some(orthanc_sdk::webapp::prepare_bundle(&DIST, |_| false, |_| LAST_MODIFIED));
 ///     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
 /// }
 ///
@@ -346,7 +386,28 @@ impl<'a> From<&'a include_dir::File<'a>> for PreparedFile<'a> {
 ///     *prepared_bundle = None;
 /// }
 /// ```
-pub fn prepare_bundle<'a>(dir: &'a include_dir::Dir) -> PreparedBundle<'a> {
+///
+/// ## Immutable Assets
+///
+/// The `Cache-Control: immutable` header _should_ be set on files which we
+/// know will never change. For example, if you have bundled jquery, you might
+/// set `is_immutable` to `|p| p == "jquery-3.7.1.min.js"`.
+///
+/// When using [Vite](https://vite.dev/), consider using
+/// `|p| p.starts_with("assets/")`. Vite puts immutable assets in an `assets`
+/// directory and appends hashes to file names.
+///
+/// ## Parameters
+///
+/// - `dir`: return value of [`include_dir!`][include_dir::include_dir]
+/// - `is_immutable`: a function which determines whether to use the response
+///                   header `Cache-Control: immutable`.
+/// - `date_of`: a function which sets the `Last-Modified` response header.
+pub fn prepare_bundle<'a, D: Into<Cow<'a, CStr>>>(
+    dir: &'a include_dir::Dir,
+    is_immutable: impl Fn(&'a str) -> bool,
+    date_of: impl Fn(&'a str) -> D,
+) -> PreparedBundle<'a> {
     /*
      * It would be cool if ETag header could be assigned to each file at compile time,
      * but this would be a huge amount of work to implement because:
@@ -361,20 +422,30 @@ pub fn prepare_bundle<'a>(dir: &'a include_dir::Dir) -> PreparedBundle<'a> {
      *   and modify its output, but this is not possible.
      *   https://users.rust-lang.org/t/call-proc-macro-and-modify-its-output/96486
      */
-    HashMap::from_iter(to_webfile_entries(dir))
+    HashMap::from_iter(to_webfile_entries(dir, &is_immutable, &date_of))
 }
 
-fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, PreparedFile<'a>)> {
+fn to_webfile_entries<'a, D: Into<Cow<'a, CStr>>>(
+    dir: &'a include_dir::Dir,
+    is_immutable: &impl Fn(&'a str) -> bool,
+    date_of: &impl Fn(&'a str) -> D,
+) -> Vec<(&'a str, PreparedFile<'a>)> {
     dir.entries()
         .iter()
         .flat_map(|entry| match entry {
-            include_dir::DirEntry::Dir(dir) => to_webfile_entries(dir),
+            include_dir::DirEntry::Dir(dir) => to_webfile_entries(dir, is_immutable, date_of),
             include_dir::DirEntry::File(file) => {
                 let path = file
                     .path()
                     .to_str()
                     .expect("Web bundle contains a non-unicode path");
-                vec![(path, PreparedFile::from(file))]
+                let mutable = is_immutable(path);
+                let modified_date = date_of(path).into();
+                debug_assert!(
+                    modified_date.to_str().unwrap().ends_with("GMT"),
+                    "HTTP dates must be expressed in GMT."
+                );
+                vec![(path, PreparedFile::new(file, mutable, modified_date))]
             }
         })
         .collect()

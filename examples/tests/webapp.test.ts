@@ -38,5 +38,20 @@ describe("orthanc::webapp", () => {
 			});
 			expect(res.status).toBe(304);
 		});
+		it("should set `Cache-Control: immutable` on index.js", async () => {
+			const res = await fetch("http://localhost:8042/prepared/script.js");
+			expect(res.headers.get("Cache-Control")).toInclude("immutable");
+			expect(res.headers.get("Cache-Control")).toInclude("max-age=");
+		});
+		it("should not set `Cache-Control` on index.html", async () => {
+			const res = await fetch("http://localhost:8042/prepared/index.html");
+			expect(res.headers).not.toContainKey("Cache-Control");
+		});
+		it("should have Last-Modified response header", async () => {
+			const res = await fetch("http://localhost:8042/prepared/index.html");
+			expect(res.headers.get("Last-Modified")).toBe(
+				"Tue, 22 Feb 2022 20:20:20 GMT",
+			);
+		});
 	});
 });

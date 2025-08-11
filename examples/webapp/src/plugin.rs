@@ -38,7 +38,11 @@ pub extern "C" fn OrthancPluginInitialize(
 ) -> bindings::OrthancPluginErrorCode {
     orthanc_sdk::register_rest_no_lock(context, c"/simple/?(.*)", Some(serve_simple));
     orthanc_sdk::register_rest_no_lock(context, c"/prepared/?(.*)", Some(serve_prepared));
-    let prepared_bundle = orthanc_sdk::webapp::prepare_bundle(&DIST);
+    let prepared_bundle = orthanc_sdk::webapp::prepare_bundle(
+        &DIST,
+        |p| p.ends_with(".js"),
+        |_| c"Tue, 22 Feb 2022 20:20:20 GMT",
+    );
     let mut global_state = GLOBAL_STATE.try_write().unwrap();
     *global_state = Some(AppState {
         context: OrthancContext(context),
