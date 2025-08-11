@@ -93,3 +93,13 @@ just clean
 cargo llvm-cov report --html --ignore-filename-regex orthanc_client_ogen
 ```
 
+The tests are written with [Bun](https://bun.com).
+
+<details>
+<summary>Why Bun?</summary>
+
+Most of `orthanc_sdk` cannot be tested using `cargo test` because it is FFI
+code to be invoked by Orthanc. We use Bun to cause the invocation of our code
+via REST API calls made using `fetch`.
+
+</details>
