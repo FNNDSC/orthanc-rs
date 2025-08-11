@@ -1,5 +1,9 @@
 # Orthanc Plugins in Rust
 
+![Crates.io License](https://img.shields.io/crates/l/orthanc_sdk)
+[![Test](https://github.com/FNNDSC/orthanc-rs/actions/workflows/test.yml/badge.svg)](https://github.com/FNNDSC/orthanc-rs/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/FNNDSC/orthanc-rs/graph/badge.svg?token=9RHMEYB2UU)](https://codecov.io/gh/FNNDSC/orthanc-rs)
+
 This [cargo workspace](https://doc.rust-lang.org/cargo/reference/workspaces.html) contains:
 
 | Crate                            | Version                                                                                          | Description                                                              |
