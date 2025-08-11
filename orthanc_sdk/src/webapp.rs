@@ -130,7 +130,7 @@ fn serve_static_file_impl(
     let resolved_path = if path.is_empty() { "index.html" } else { path };
     let code = if let Some(file) = bundle.get_file(resolved_path) {
         if let Some(etag) = file.etag() {
-            if let Some(value) = unsafe { get_header(request, c"ETag") }
+            if let Some(value) = unsafe { get_header(request, c"if-none-match") }
                 && value == etag
             {
                 send_not_modified(context, output).into_result()
@@ -176,6 +176,9 @@ unsafe fn first_group_of<'a>(
     c_str.to_str().ok()
 }
 
+/// Get header value from request to Orthanc.
+///
+/// NOTE: Orthanc converts all header keys to lowercase.
 unsafe fn get_header<'a>(
     request: *const bindings::OrthancPluginHttpRequest,
     key: &CStr,
@@ -191,8 +194,8 @@ unsafe fn get_header<'a>(
     });
     if let Some(i) = i {
         let value = unsafe {
-            let ptr = (*(*request).headersValues).offset(i as isize);
-            CStr::from_ptr(ptr)
+            let values = unsafe { std::slice::from_raw_parts((*request).headersValues, len) };
+            CStr::from_ptr(values[i])
         };
         Some(value)
     } else {
@@ -380,5 +383,5 @@ fn to_webfile_entries<'a>(dir: &'a include_dir::Dir) -> Vec<(&'a str, PreparedFi
 fn etag_of(file: &include_dir::File) -> CString {
     let hash = rapidhash::v3::rapidhash_v3(file.contents());
     let encoded = base32::encode(base32::Alphabet::Crockford, &hash.to_le_bytes());
-    CString::new(encoded).unwrap()
+    CString::new(format!("\"{encoded}\"")).unwrap()
 }

@@ -6,7 +6,7 @@ const scriptJs = await Bun.file("./webapp/dist/script.js").text();
 /**
  * Crockford's base32 encoding of rapidhash of script.js
  */
-const EXPECTED_ETAG = "5Y1Y24E8PKPT6";
+const EXPECTED_ETAG = '"5Y1Y24E8PKPT6"';
 
 describe("orthanc::webapp", () => {
 	describe.each(["simple", "prepared"])("/%s", (base) => {
@@ -29,6 +29,14 @@ describe("orthanc::webapp", () => {
 		it("should have a stable ETag", async () => {
 			const res = await fetch("http://localhost:8042/prepared/script.js");
 			expect(res.headers.get("ETag")).toBe(EXPECTED_ETAG);
+		});
+		it("should return 304 Not Modified", async () => {
+			const res = await fetch("http://localhost:8042/prepared/script.js", {
+				headers: {
+					"If-None-Match": EXPECTED_ETAG,
+				},
+			});
+			expect(res.status).toBe(304);
 		});
 	});
 });
