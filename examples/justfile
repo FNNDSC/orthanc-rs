@@ -29,7 +29,7 @@ wait:
 
 # Build Rust library
 build:
-    cargo build -p example_plugin_basic -p example_plugin_webapp
+    cargo build --locked -p example_plugin_basic -p example_plugin_webapp
 
 # Delete testing data
 clean:

@@ -17,8 +17,50 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  test:
-    name: Test
+  test-unit:
+    name: Unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup rust cache
+        uses: Swatinem/rust-cache@v2
+
+      - name: Cache codegen
+        id: cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ hashFiles('flake.nix', 'flake.lock', 'justfile', 'orthanc_client_ogen_overlay/**') }}
+          path: |
+            orthanc_client_ogen
+            orthanc_sdk/src/bindings.rs
+      - name: Install Nix
+        if: steps.cache.outputs.cache-hit != 'true'
+        uses: cachix/install-nix-action@v31
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build devShell
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: nix build --no-link .#devShell.$(uname -m)-linux
+      - name: Codegen
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: nix develop -c just
+
+      - name: Install cargo-llvm-cov
+        uses: taiki-e/install-action@cargo-llvm-cov
+      - name: Run unit tests
+        run: cargo llvm-cov --locked --all-features --workspace --lcov --output-path lcov.info
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          flags: unit
+          fail_ci_if_error: true
+
+  test-integration:
+    name: Integration tests
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +69,16 @@ jobs:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
       - name: Build devShell
         run: nix build --no-link .#devShell.$(uname -m)-linux
+      - name: Cache codegen
+        id: cache
+        uses: actions/cache@v4
+        with:
+          key: ${{ hashFiles('flake.nix', 'flake.lock', 'justfile', 'orthanc_client_ogen_overlay/**') }}
+          path: |
+            orthanc_client_ogen
+            orthanc_sdk/src/bindings.rs
       - name: Codegen
+        if: steps.cache.outputs.cache-hit != 'true'
         shell: 'nix develop -c bash -e {0}'
         run: just
       - name: Setup rust cache
@@ -71,4 +122,5 @@ jobs:
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
+          flags: integration
           fail_ci_if_error: true
