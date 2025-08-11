@@ -10,31 +10,65 @@ on:
       - '**/Cargo.lock'
       - '**/Cargo.toml'
       - '**/justfile'
-      - 'example_plugin/**'
+      - 'examples/**'
   pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
   test:
-    name: Test example plugin
+    name: Test
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: cachix/install-nix-action@v31
         with:
           github_access_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build devShell
+        run: nix build --no-link .#devShell.$(uname -m)-linux
       - name: Codegen
-        run: nix develop -c just
+        shell: 'nix develop -c bash -e {0}'
+        run: just
       - name: Setup rust cache
         uses: Swatinem/rust-cache@v2
+      - name: Prepare test coverage environment
+        shell: 'nix develop -c bash -e {0}'
+        run: |
+          cargo llvm-cov show-env | sed "s/'//g" >> "$GITHUB_ENV"
+          cargo llvm-cov clean --workspace
       - name: Build
-        run: cd example_plugin && nix develop -c just build
-      - name: Pull images
-        run: cd example_plugin && nix develop -c podman-compose pull
+        shell: 'nix develop -c bash -e {0}'
+        working-directory: examples
+        run: just build
       - name: Start Orthanc
-        run: cd example_plugin && nix develop -c just -- up -d
-      - name: Wait for Orthanc to start
-        run: sleep 1
-      - name: Test
-        run: cd example_plugin && nix develop -c just test
-      - name: Tear town
-        run: cd example_plugin && nix develop -c just down
+        id: start
+        shell: 'nix develop -c bash -e {0}'
+        working-directory: examples
+        run: |
+          just up &
+          just wait
+      - name: Run tests
+        id: test
+        shell: 'nix develop -c bash -e {0}'
+        working-directory: examples
+        run: just test
+      - name: Print logs
+        if: ${{ !cancelled() && (steps.start.outcome == 'failure' || steps.test.outcome == 'failure') }}
+        run: cat examples/orthanc.log
+      - name: Stop Orthanc
+        shell: 'nix develop -c bash -e {0}'
+        working-directory: examples
+        run: just down
+      - name: Report coverage
+        if: ${{ !cancelled() }}
+        id: report
+        shell: 'nix develop -c bash -e {0}'
+        run: cargo llvm-cov report --lcov --output-path lcov.info --ignore-filename-regex orthanc_client_ogen
+      - name: Upload coverage to Codecov
+        if: ${{ !cancelled() && steps.report.outcome == 'success' }}
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
+          fail_ci_if_error: true

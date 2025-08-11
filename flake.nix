@@ -2,7 +2,7 @@
   description = "Development environment for Orthanc plugin SDK in Rust";
 
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-25.05";
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
 
@@ -15,14 +15,17 @@
       {
         devShell = mkShell {
           buildInputs = [
-            # you are assumed to have `rustup` and `podman` installed globally
+            # you are assumed to have `rustup` installed globally
             just
             fd
             xh
             jaq
             openapi-generator-cli
             rust-bindgen
-            podman-compose
+
+            orthanc
+            cargo-llvm-cov
+            bun
           ];
         };
       });

@@ -1,7 +1,7 @@
 //! Idiomatic and hopefully safe abstractions for developing an Orthanc plugin in Rust.
 //!
 //! The documentation here aims to be concise. Please refer to the
-//! [example plugin code](https://github.com/FNNDSC/orthanc-rs/blob/master/example_plugin/src/plugin.rs)
+//! [basic example plugin code](https://github.com/FNNDSC/orthanc-rs/blob/master/examples/basic/src/plugin.rs)
 //! as a gentler introduction on how to use this crate.
 
 #![cfg_attr(docsrs, feature(doc_auto_cfg))]

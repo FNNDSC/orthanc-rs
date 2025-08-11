@@ -130,11 +130,20 @@ fn serve_static_file_impl(
     let resolved_path = if path.is_empty() { "index.html" } else { path };
     let code = if let Some(file) = bundle.get_file(resolved_path) {
         if let Some(etag) = file.etag() {
-            set_http_header(context, output, c"ETag", etag).into_result()
+            if let Some(value) = unsafe { get_header(request, c"ETag") }
+                && value == etag
+            {
+                send_not_modified(context, output).into_result()
+            } else {
+                set_http_header(context, output, c"ETag", etag)
+                    .into_result()
+                    .and_then(|_| {
+                        answer_buffer(context, output, file.body(), file.mime()).into_result()
+                    })
+            }
         } else {
-            Ok(bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success)
+            answer_buffer(context, output, file.body(), file.mime()).into_result()
         }
-        .and_then(|_| answer_buffer(context, output, file.body(), file.mime()).into_result())
         .into_code()
     } else {
         send_not_found(context, output)
@@ -149,6 +158,13 @@ fn send_not_found(
     send_http_status_code(context, output, StatusCode::NOT_FOUND.as_u16())
 }
 
+fn send_not_modified(
+    context: *mut bindings::OrthancPluginContext,
+    output: *mut bindings::OrthancPluginRestOutput,
+) -> bindings::OrthancPluginErrorCode {
+    send_http_status_code(context, output, StatusCode::NOT_MODIFIED.as_u16())
+}
+
 unsafe fn first_group_of<'a>(
     request: *const bindings::OrthancPluginHttpRequest,
 ) -> Option<&'a str> {
@@ -158,6 +174,30 @@ unsafe fn first_group_of<'a>(
     }
     let c_str = unsafe { CStr::from_ptr(*(*request).groups) };
     c_str.to_str().ok()
+}
+
+unsafe fn get_header<'a>(
+    request: *const bindings::OrthancPluginHttpRequest,
+    key: &CStr,
+) -> Option<&'a CStr> {
+    let len = (unsafe { *request }).headersCount as usize;
+    let keys = unsafe { std::slice::from_raw_parts((*request).headersKeys, len) };
+    let i = keys.iter().enumerate().find_map(|(i, ptr)| {
+        if unsafe { CStr::from_ptr(*ptr) } == key {
+            Some(i)
+        } else {
+            None
+        }
+    });
+    if let Some(i) = i {
+        let value = unsafe {
+            let ptr = (*(*request).headersValues).offset(i as isize);
+            CStr::from_ptr(ptr)
+        };
+        Some(value)
+    } else {
+        None
+    }
 }
 
 /// Bundle of files to be served by Orthanc's web server.

@@ -251,7 +251,7 @@ impl orthanc_sdk::api::types::RequestedTags for PatientDetails {
 /// It does plumbing before calling [http_route_add].
 extern "C" fn rest_callback(
     output: *mut bindings::OrthancPluginRestOutput,
-    url: *const std::os::raw::c_char,
+    url: *const std::ffi::c_char,
     request: *const bindings::OrthancPluginHttpRequest,
 ) -> bindings::OrthancPluginErrorCode {
     let app_state = if let Ok(app_state) = GLOBAL_STATE.try_read() {
@@ -269,12 +269,12 @@ extern "C" fn rest_callback(
 /// HTTP route which adds two integers.
 fn http_route_add(
     req: orthanc_sdk::http::Request<ExampleHttpBody>,
-) -> orthanc_sdk::http::Response<String> {
+) -> orthanc_sdk::http::Response<ExampleResponseBody> {
     tracing::info!(method = req.method.as_str(), uri = req.url);
     if req.method == orthanc_sdk::http::Method::Post {
         if let Some(body) = req.body {
-            let result = body.a + body.b;
-            orthanc_sdk::http::Response::ok(format!("{result}"))
+            let sum = body.a + body.b;
+            orthanc_sdk::http::Response::ok(ExampleResponseBody { sum })
         } else {
             orthanc_sdk::http::Response {
                 code: http::StatusCode::BAD_REQUEST,
@@ -296,4 +296,9 @@ fn http_route_add(
 struct ExampleHttpBody {
     a: u32,
     b: u32,
+}
+
+#[derive(serde::Serialize)]
+struct ExampleResponseBody {
+    sum: u32,
 }

@@ -10,7 +10,7 @@ Idiomatic and hopefully safe abstractions for developing an Orthanc plugin in Ru
 
 ## Getting Started
 
-Please refer to the [example plugin](../example_plugin/src/plugin.rs).
+Please refer to the [example plugin](../examples/basic/src/plugin.rs).
 
 ## Supported Features
 

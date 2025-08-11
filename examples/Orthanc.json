@@ -1,0 +1,20 @@
+{
+  "Name" : "Rust Plugin Examples",
+  "StorageDirectory" : "./data/OrthancStorage",
+  "IndexDirectory" : "./data/OrthancStorage",
+
+  "Plugins" : [ "${CARGO_LLVM_COV_TARGET_DIR:-../target}/debug" ],
+
+  "ExampleRustPlugin" : {
+    "MrnFile" : "./data/output.txt"
+  },
+
+  "HttpServerEnabled" : true,
+  "RemoteAccessAllowed" : true,
+  "AuthenticationEnabled" : false,
+  "HttpPort" : 8042,
+
+  "HttpDescribeErrors" : true,
+  "HttpVerbose" : false,
+  "DeidentifyLogs" : false
+}
