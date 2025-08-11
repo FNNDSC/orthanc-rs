@@ -85,7 +85,6 @@ cd examples
 just up &
 
 just test
-just just
 just down
 just clean
 
