@@ -1,10 +1,14 @@
 # Start Orthanc.
 up *args: build
-    Orthanc --logfile=orthanc.log {{ args }} Orthanc.json
+    Orthanc --logfile=orthanc.log {{ args }} Orthanc.json & \
+      echo $! > .orthanc.pid \
+      && wait; \
+      code=$?; rm .orthanc.pid; exit $code
 
 # Shut down Orthanc.
 down:
     xh POST :8042/tools/shutdown
+    pidwait -F .orthanc.pid
 
 # Run tests.
 test: wait
@@ -29,4 +33,4 @@ build:
 
 # Delete testing data
 clean:
-    rm -rf data orthanc.log
+    rm -rf data orthanc.log .orthanc.pid

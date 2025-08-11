@@ -64,7 +64,7 @@ jobs:
         if: ${{ !cancelled() }}
         id: report
         shell: 'nix develop -c bash -e {0}'
-        run: cargo llvm-cov report --lcov --output-path lcov.info --ignore-filename-regex orthanc_client_ogen
+        run: cargo llvm-cov report --fail-under-regions 10 --lcov --output-path lcov.info --ignore-filename-regex orthanc_client_ogen
       - name: Upload coverage to Codecov
         if: ${{ !cancelled() && steps.report.outcome == 'success' }}
         uses: codecov/codecov-action@v5
