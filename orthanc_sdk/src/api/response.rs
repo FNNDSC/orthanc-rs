@@ -1,6 +1,6 @@
 use crate::bindings;
-use crate::helpers::free_memory_buffer;
 use crate::http::Response;
+use crate::sdk::free_memory_buffer;
 use http::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::marker::PhantomData;

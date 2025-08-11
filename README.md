@@ -1,5 +1,9 @@
 # Orthanc Plugins in Rust
 
+![Crates.io License](https://img.shields.io/crates/l/orthanc_sdk)
+[![Test](https://github.com/FNNDSC/orthanc-rs/actions/workflows/test.yml/badge.svg)](https://github.com/FNNDSC/orthanc-rs/actions/workflows/test.yml)
+[![codecov](https://codecov.io/gh/FNNDSC/orthanc-rs/graph/badge.svg?token=9RHMEYB2UU)](https://codecov.io/gh/FNNDSC/orthanc-rs)
+
 This [cargo workspace](https://doc.rust-lang.org/cargo/reference/workspaces.html) contains:
 
 | Crate                            | Version                                                                                          | Description                                                              |
@@ -7,11 +11,11 @@ This [cargo workspace](https://doc.rust-lang.org/cargo/reference/workspaces.html
 | [orthanc_sdk](./orthanc_sdk)     | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_sdk)][orthanc_sdk]                 | Abstractions for developing a Rust Orthanc plugin                        |
 | [orthanc_client_ogen][ogen]      | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_client_ogen)][orthanc_client_ogen] | Automatically generated Orthanc client using OpenAPI                     |
 | [orthanc_api](./orthanc_api)     | [![Crates.io Version](https://img.shields.io/crates/v/orthanc_api)][orthanc_api]                 | Hand-written types for the Orthanc API                                   |
-| [example_plugin][example]        | N/A                                                                                              | Example Orthanc plugin using [orthanc_sdk][orthanc_sdk]                  |
+| [examples/basic][example]        | N/A                                                                                              | Example Orthanc plugin using [orthanc_sdk][orthanc_sdk]                  |
 | [blt](./blt)                     | ![Cargo.toml Version][blt-badge]                                                                 | Orthanc plugin for automating the Boston Children's Hospital BLT project |
 
 [ogen]: ./orthanc_client_ogen_overlay
-[example]: ./example_plugin/src/plugin.rs
+[example]: ./examples/basic/src/plugin.rs
 [orthanc_api]: https://crates.io/crates/orthanc_api
 [orthanc_sdk]: https://crates.io/crates/orthanc_sdk
 [orthanc_client_ogen]: https://crates.io/crates/orthanc_client_ogen
@@ -52,6 +56,7 @@ You will also need these, which are trickier to install:
 - Bindgen: https://rust-lang.github.io/rust-bindgen/command-line-usage.html
 - OpenAPI Generator: https://openapi-generator.tech/docs/installation
 - Podman: https://podman.io/docs/installation
+- Bun (to test the examples): https://bun.com/
 
 </details>
 
@@ -68,15 +73,23 @@ just
 
 ### Testing
 
-[example_plugin](/example_plugin) is both a well-documented example plugin and
-a test for the [orthanc_sdk](./orthan_sdk) and [orthanc_api](orthanc_api) crates.
+The [examples/](/examples) directory contains both well-documented example
+plugins and tests for [orthanc_sdk](./orthan_sdk).
 
 ```shell
-cd example_plugin
-just up -d
-sleep 1
+# optional: collect test coverage data
+source <(cargo llvm-cov show-env --export-prefix)
+cargo llvm-cov clean --workspace
+
+cd examples
+just up &
 
 just test
-
+just just
 just down
+just clean
+
+# optional: generate HTML coverage report
+cargo llvm-cov report --html --ignore-filename-regex orthanc_client_ogen
 ```
+

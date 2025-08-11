@@ -1,0 +1,32 @@
+# Start Orthanc.
+up *args: build
+    Orthanc --logfile=orthanc.log {{ args }} Orthanc.json
+
+# Shut down Orthanc.
+down:
+    xh POST :8042/tools/shutdown
+
+# Run tests.
+test: wait
+    bun test
+
+# Wait until Orthanc server is ready to accept connections.
+wait:
+    @start=$(date +%s); \
+    until xh -qq GET :8042/system 2> /dev/null; do \
+      printf .; \
+      now=$(date +%s); \
+      if [ $((now-start)) -gt 10 ]; then \
+        xh -v GET :8042/system || exit 1; \
+      fi; \
+      sleep 1; \
+    done
+    @echo
+
+# Build Rust library
+build:
+    cargo build -p example_plugin_basic -p example_plugin_webapp
+
+# Delete testing data
+clean:
+    rm -rf data orthanc.log

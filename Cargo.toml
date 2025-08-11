@@ -6,5 +6,7 @@ members = [
     "orthanc_api",
     "orthanc_sdk",
     "orthanc_client_ogen",
-    "blt"
-, "example_plugin"]
+    "blt",
+    "examples/basic",
+    "examples/webapp"
+]

@@ -2,7 +2,7 @@ use std::mem::MaybeUninit;
 
 use crate::{
     bindings,
-    helpers::{free_string, invoke_service},
+    sdk::{free_string, invoke_service},
 };
 
 /// Return the content of the configuration file(s).

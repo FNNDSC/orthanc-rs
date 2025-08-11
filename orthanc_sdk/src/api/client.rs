@@ -1,6 +1,6 @@
 use super::response::{PostJsonResponse, RestResponse};
 use crate::bindings;
-use crate::helpers::{create_empty_buffer, free_memory_buffer, invoke_service};
+use crate::sdk::{create_empty_buffer, free_memory_buffer, invoke_service};
 use serde::{Deserialize, Serialize};
 use std::ffi::CString;
 
