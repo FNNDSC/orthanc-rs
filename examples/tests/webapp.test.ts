@@ -24,6 +24,17 @@ describe("orthanc::webapp", () => {
 			const actual = await res.text();
 			expect(actual).toBe(scriptJs);
 		});
+		it("should only allow GET method", async () => {
+			const res = await fetch(`http://localhost:8042/${base}/script.js`, {
+				method: "PUT",
+			});
+			expect(res.status).toBe(405);
+			expect(res.headers.get("Allow")).toBe("GET");
+		});
+		it("should produce 404 when not found", async () => {
+			const res = await fetch(`http://localhost:8042/${base}/doesNotExist.dat`);
+			expect(res.status).toBe(404);
+		});
 	});
 	describe("orthanc::webapp::prepare_bundle", () => {
 		it("should have a stable ETag", async () => {
