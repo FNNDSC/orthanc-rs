@@ -879,8 +879,6 @@ dependencies = [
  "mime_guess",
  "orthanc_api",
  "orthanc_client_ogen",
- "pretty_assertions",
- "rstest",
  "serde",
  "serde_json",
  "thiserror 2.0.12",
