@@ -28,6 +28,9 @@ include_webdir = { version = "0.1.0", path = "../include_webdir", optional = tru
 [features]
 webapp = ["dep:include_webdir", "dep:include_dir", "dep:mime_guess"]
 
+[build-dependencies]
+bindgen = "0.72.0"
+
 [package.metadata.docs.rs]
 all-features = true
 
