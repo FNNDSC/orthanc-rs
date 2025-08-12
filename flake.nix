@@ -21,7 +21,7 @@
             xh
             jaq
             openapi-generator-cli
-            rustPlatform.bindgenHook
+            rust-bindgen
 
             orthanc
             cargo-llvm-cov

@@ -1,5 +1,5 @@
 # Generate required Rust code
-codegen: download-header generate-client
+codegen: generate-bindings generate-client
 
 # Generate Orthanc model files using OpenAPI.
 generate-client: _openapi_generator && _postprocess_client
@@ -26,8 +26,9 @@ _fix_rustdoc_links file:
     # escape `[`, `]` in "[0,n] range" snippets
     sed -i -e 's#\(///.*\) \[\([0-9]*,[0-9]*\)\]\( range\.\)#\1 \\[\2\\]\3#' '{{file}}'
 
-# Download Orthanc plugin C header file
-download-header:
+# Generate Orthanc SDK bindings using bindgen
+generate-bindings:
     mkdir -p 3rdparty
     wget -O 3rdparty/OrthancCPlugin.h 'https://orthanc.uclouvain.be/hg/orthanc/raw-file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h'
+    bindgen 3rdparty/OrthancCPlugin.h -o orthanc_sdk/src/bindings.rs
 
