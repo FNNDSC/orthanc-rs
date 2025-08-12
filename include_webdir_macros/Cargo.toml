@@ -1,0 +1,20 @@
+[package]
+name = "include_webdir_macros"
+description = "The procedural macro used by include_webdir"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+base32 = "0.5.1"
+fs-err = "3.1.1"
+httpdate = "1.0.3"
+mime_guess = "2.0.5"
+proc-macro2 = "1.0.97"
+quote = "1.0.40"
+rapidhash = "3.1.0"
+
+[lib]
+proc-macro = true
+
+[features]
+nightly = []

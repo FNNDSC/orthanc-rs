@@ -1,0 +1,12 @@
+[package]
+name = "include_webdir"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+include_webdir_macros = { version = "0.1.0", path = "../include_webdir_macros" }
+litemap = "0.8.0"
+
+[dev-dependencies]
+httpdate = "1.0.3"
+include_dir = { version = "0.7.4", features = ["metadata"] }

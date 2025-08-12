@@ -1,7 +1,5 @@
 //! Utilities for packaging a static web app as an Orthanc plugin. See [`serve_static_file`].
 
-use std::borrow::Cow;
-use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 
 use http::StatusCode;
@@ -19,7 +17,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 ///
 /// The regular expression passed to [`register_rest_no_lock`] _must_ match the
 /// relative path as the first capture group. For example, to serve the bundle
-/// under a prefix "/my_webapp", use the value `c"/my_webapp/?(.*)`.
+/// under a prefix "/my_webapp", use the value `c"/my_webapp/?(.*)"`.
 ///
 /// ## Behavior
 ///
@@ -35,7 +33,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// ```
 /// use std::sync::RwLock;
 /// use orthanc_sdk::bindings;
-/// use include_dir::include_dir;
+/// use include_webdir::{include_cwebdir, CWebBundle};
 ///
 /// struct OrthancContext(*mut bindings::OrthancPluginContext);
 /// unsafe impl Send for OrthancContext {}
@@ -45,7 +43,7 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// static CONTEXT: RwLock<Option<OrthancContext>> = RwLock::new(None);
 ///
 /// /// Directory containing static web application bundle (HTML and other files).
-/// const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/example_directory");
+/// const DIST: CWebBundle = include_cwebdir!("$CARGO_MANIFEST_DIR/example_directory");
 ///
 /// #[unsafe(no_mangle)]
 /// pub extern "C" fn OrthancPluginInitialize(
@@ -90,29 +88,27 @@ use crate::{bindings, http::Method, send_method_not_allowed};
 /// ```
 ///
 /// A real-life example can be found here:
-/// <https://github.com/FNNDSC/orthanc-patient-list/blob/release/20250810/plugin/src/plugin.rs>
-///
-/// ## Performance
-///
-/// Call [`prepare_bundle`] during `OrthancPluginInitialize()` to pre-compute a
-/// value for the `ETag` response header for each file and optimize the data
-/// structure representing the bundle.
+/// <https://github.com/FNNDSC/orthanc-patient-list/blob/release/20250812/plugin/src/plugin.rs>
 ///
 /// ## Parameters
 ///
-/// - `context`: The Orthanc plugin context, as received by `OrthancPluginInitialize()`.`
-/// - `output`: The HTTP connection to the client application.
-/// - `request`: The incoming request parameters, as received by the callback passed to [`register_rest_no_lock`].
-/// - `bundle`: web bundle to serve&mdash;can either be the value of [`include_dir!`](include_dir::include_dir)
-///   or [`prepare_bundle`].
+/// The `bundle` parameter may either be the value returned by [`include_dir!`]
+/// or [`include_cwebdir!`].
+///
+/// - [`include_cwebdir!`] is better for performance: it enables the usage of
+///   HTTP cache-related response headers such as `Cache-Control`, `ETag`, and
+///   `Last-Modified`.
+/// - [`include_dir!`] does not provide the necessary information to set HTTP
+///   cache-related response headers.
 ///
 /// [`register_rest_no_lock`]: crate::register_rest_no_lock
 /// [`include_dir!`]: include_dir::include_dir
+/// [`include_cwebdir!`]: include_webdir::include_cwebdir
 pub fn serve_static_file(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     request: *const bindings::OrthancPluginHttpRequest,
-    bundle: &impl WebBundle,
+    bundle: &impl OrthancServableBundle,
 ) -> bindings::OrthancPluginErrorCode {
     serve_static_file_impl(context, output, request, bundle).into_code()
 }
@@ -121,7 +117,7 @@ fn serve_static_file_impl(
     context: *mut bindings::OrthancPluginContext,
     output: *mut bindings::OrthancPluginRestOutput,
     request: *const bindings::OrthancPluginHttpRequest,
-    bundle: &impl WebBundle,
+    bundle: &impl OrthancServableBundle,
 ) -> ErrorCodeResult {
     if !method_is_get(request) {
         return send_method_not_allowed(context, output, c"GET").into_result();
@@ -216,10 +212,16 @@ unsafe fn get_header<'a>(
     }
 }
 
+fn method_is_get(request: *const bindings::OrthancPluginHttpRequest) -> bool {
+    Method::try_from(unsafe { (*request).method })
+        .map(|m| matches!(m, Method::Get))
+        .unwrap_or(false)
+}
+
 /// Bundle of files to be served by Orthanc's web server.
-pub trait WebBundle {
+pub trait OrthancServableBundle {
     /// Associated type representing file obtained from this bundle.
-    type File<'b>: WebFile
+    type File<'b>: OrthancServableFile
     where
         // https://github.com/rust-lang/rust/issues/87479
         Self: 'b;
@@ -228,7 +230,7 @@ pub trait WebBundle {
     fn get_file<'a>(&'a self, path: &'a str) -> Option<Self::File<'a>>;
 }
 
-impl WebBundle for include_dir::Dir<'_> {
+impl OrthancServableBundle for include_dir::Dir<'_> {
     type File<'b>
         = IncludedFile<'b>
     where
@@ -239,7 +241,7 @@ impl WebBundle for include_dir::Dir<'_> {
 }
 
 /// A file which can be served by Orthanc's web server.
-pub trait WebFile {
+pub trait OrthancServableFile {
     /// File contents as bytes.
     fn body(&self) -> &[u8];
 
@@ -272,7 +274,7 @@ impl<'a> From<&'a include_dir::File<'a>> for IncludedFile<'a> {
     }
 }
 
-impl WebFile for IncludedFile<'_> {
+impl OrthancServableFile for IncludedFile<'_> {
     fn body(&self) -> &[u8] {
         self.file.contents()
     }
@@ -294,18 +296,9 @@ impl WebFile for IncludedFile<'_> {
     }
 }
 
-fn method_is_get(request: *const bindings::OrthancPluginHttpRequest) -> bool {
-    Method::try_from(unsafe { (*request).method })
-        .map(|m| matches!(m, Method::Get))
-        .unwrap_or(false)
-}
-
-/// Map of _"prepared"_ web files to be served by Orthanc's web server.
-pub type PreparedBundle<'a> = HashMap<&'a str, PreparedFile<'a>>;
-
-impl WebBundle for PreparedBundle<'_> {
+impl OrthancServableBundle for include_webdir::CWebBundle<'_> {
     type File<'b>
-        = &'b PreparedFile<'b>
+        = &'b include_webdir::CWebFile<'b>
     where
         Self: 'b;
 
@@ -314,39 +307,17 @@ impl WebBundle for PreparedBundle<'_> {
     }
 }
 
-/// File data with pre-computed MIME type and ETag value.
-pub struct PreparedFile<'a> {
-    body: &'a [u8],
-    mime: CString,
-    etag: CString,
-    immutable: bool,
-    date: Cow<'a, CStr>,
-}
-
-impl<'a> PreparedFile<'a> {
-    fn new(file: &'a include_dir::File<'a>, immutable: bool, date: Cow<'a, CStr>) -> Self {
-        let guess = mime_guess::from_path(file.path()).first_or_octet_stream();
-        Self {
-            body: file.contents(),
-            mime: CString::new(guess.essence_str()).unwrap(),
-            etag: etag_of(file),
-            immutable,
-            date,
-        }
-    }
-}
-
-impl WebFile for &PreparedFile<'_> {
+impl OrthancServableFile for &include_webdir::CWebFile<'_> {
     fn body(&self) -> &[u8] {
         self.body
     }
 
     fn mime(&self) -> &CStr {
-        &self.mime
+        self.mime
     }
 
     fn etag(&self) -> Option<&CStr> {
-        Some(&self.etag)
+        Some(self.etag)
     }
 
     fn is_immutable(&self) -> bool {
@@ -354,105 +325,6 @@ impl WebFile for &PreparedFile<'_> {
     }
 
     fn last_modified(&self) -> Option<&CStr> {
-        Some(&self.date)
+        Some(self.last_modified)
     }
-}
-
-/// Prepare static files for web serving (guess MIME type and generate `ETag` header value).
-///
-/// ## Example
-///
-/// ```
-/// use std::sync::RwLock;
-/// use include_dir::include_dir;
-/// use orthanc_sdk::{bindings, webapp::PreparedBundle};
-///
-/// const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/example_directory");
-/// const LAST_MODIFIED: &std::ffi::CStr = c"Tue, 22 Feb 2022 20:20:20 GMT";
-/// static PREPARED_BUNDLE: RwLock<Option<PreparedBundle<'static>>> = RwLock::new(None);
-///
-/// #[unsafe(no_mangle)]
-/// pub extern "C" fn OrthancPluginInitialize(
-///     context: *mut bindings::OrthancPluginContext,
-/// ) -> bindings::OrthancPluginErrorCode {
-///     let mut prepared_bundle = PREPARED_BUNDLE.try_write().unwrap();
-///     *prepared_bundle = Some(orthanc_sdk::webapp::prepare_bundle(&DIST, |_| false, |_| LAST_MODIFIED));
-///     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
-/// }
-///
-/// #[unsafe(no_mangle)]
-/// pub extern "C" fn OrthancPluginFinalize() {
-///     let mut prepared_bundle = PREPARED_BUNDLE.try_write().unwrap();
-///     *prepared_bundle = None;
-/// }
-/// ```
-///
-/// ## Immutable Assets
-///
-/// The `Cache-Control: immutable` header _should_ be set on files which we
-/// know will never change. For example, if you have bundled jquery, you might
-/// set `is_immutable` to `|p| p == "jquery-3.7.1.min.js"`.
-///
-/// When using [Vite](https://vite.dev/), consider using
-/// `|p| p.starts_with("assets/")`. Vite puts immutable assets in an `assets`
-/// directory and appends hashes to file names.
-///
-/// ## Parameters
-///
-/// - `dir`: return value of [`include_dir!`][include_dir::include_dir]
-/// - `is_immutable`: a function which determines whether to use the response
-///                   header `Cache-Control: immutable`.
-/// - `date_of`: a function which sets the `Last-Modified` response header.
-pub fn prepare_bundle<'a, D: Into<Cow<'a, CStr>>>(
-    dir: &'a include_dir::Dir,
-    is_immutable: impl Fn(&'a str) -> bool,
-    date_of: impl Fn(&'a str) -> D,
-) -> PreparedBundle<'a> {
-    /*
-     * It would be cool if ETag header could be assigned to each file at compile time,
-     * but this would be a huge amount of work to implement because:
-     *
-     * - Many std functions are not const, for example iteration is not const. A
-     *   third-party crate must be used to achieve const iteration. `konst` implements
-     *   a macro which interprets a DSL to achieve const iteration, but it has
-     *   limitations ("can't capture dynamic environment"). https://crates.io/crates/konst
-     * - Could use `build.rs` e.g. https://crates.io/crates/precomputed-map
-     *   but this has a big burden on the library user.
-     * - Could use `proc_macro`. I would want to call `include_dir_macros::include_dir`
-     *   and modify its output, but this is not possible.
-     *   https://users.rust-lang.org/t/call-proc-macro-and-modify-its-output/96486
-     */
-    HashMap::from_iter(to_webfile_entries(dir, &is_immutable, &date_of))
-}
-
-fn to_webfile_entries<'a, D: Into<Cow<'a, CStr>>>(
-    dir: &'a include_dir::Dir,
-    is_immutable: &impl Fn(&'a str) -> bool,
-    date_of: &impl Fn(&'a str) -> D,
-) -> Vec<(&'a str, PreparedFile<'a>)> {
-    dir.entries()
-        .iter()
-        .flat_map(|entry| match entry {
-            include_dir::DirEntry::Dir(dir) => to_webfile_entries(dir, is_immutable, date_of),
-            include_dir::DirEntry::File(file) => {
-                let path = file
-                    .path()
-                    .to_str()
-                    .expect("Web bundle contains a non-unicode path");
-                let mutable = is_immutable(path);
-                let modified_date = date_of(path).into();
-                debug_assert!(
-                    modified_date.to_str().unwrap().ends_with("GMT"),
-                    "HTTP dates must be expressed in GMT."
-                );
-                vec![(path, PreparedFile::new(file, mutable, modified_date))]
-            }
-        })
-        .collect()
-}
-
-fn etag_of(file: &include_dir::File) -> CString {
-    let hash = rapidhash::v3::rapidhash_v3(file.contents());
-    let encoded = base32::encode(base32::Alphabet::Crockford, &hash.to_le_bytes());
-    CString::new(format!("\"{encoded}\"")).unwrap()
 }
