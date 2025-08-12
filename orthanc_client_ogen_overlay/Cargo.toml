@@ -1,10 +1,10 @@
 [package]
 name = "orthanc_client_ogen"
-version = "1.12.8"
-repository = "https://github.com/FNNDSC/orthanc-rs"
 description = "Orthanc API client library produced by OpenAPI Generator"
+version = "1.12.8"
 license = "GPL-3.0"
-edition = "2024"
+edition.workspace = true
+repository.workspace = true
 keywords = ["orthanc", "api", "client", "rest", "openapi"]
 categories = ["science::neuroscience", "science", "web-programming::http-client", "api-bindings"]
 

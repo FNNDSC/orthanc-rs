@@ -2,7 +2,9 @@
 name = "include_webdir_macros"
 description = "The procedural macro used by include_webdir"
 version = "0.1.0"
-edition = "2024"
+license = "MIT"
+edition.workspace = true
+repository.workspace = true
 
 [dependencies]
 base32 = "0.5.1"

@@ -1,7 +1,12 @@
 [package]
 name = "include_webdir"
+description = "Embed a static web application bundle in your binary"
 version = "0.1.0"
-edition = "2024"
+license = "MIT"
+edition.workspace = true
+repository.workspace = true
+keywords = ["assets", "dir", "include", "http"]
+categories = ["web-programming::http-server"]
 
 [dependencies]
 include_webdir_macros = { version = "0.1.0", path = "../include_webdir_macros" }

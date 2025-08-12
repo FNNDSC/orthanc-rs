@@ -1,10 +1,10 @@
 [package]
 name = "orthanc_api"
 description = "Orthanc API hand-written response models"
-repository = "https://github.com/FNNDSC/orthanc-rs"
 version = "0.0.2"
-edition = "2024"
 license = "GPL-3.0"
+edition.workspace = true
+repository.workspace = true
 keywords = ["orthanc", "api", "client", "rest"]
 categories = ["science::neuroscience", "science", "web-programming::http-client", "api-bindings"]
 

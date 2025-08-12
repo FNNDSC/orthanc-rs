@@ -12,3 +12,7 @@ members = [
     "include_webdir_macros",
     "include_webdir"
 ]
+
+[workspace.package]
+edition = "2024"
+repository = "https://github.com/FNNDSC/orthanc-rs"
