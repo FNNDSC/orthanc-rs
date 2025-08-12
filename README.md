@@ -66,7 +66,7 @@ sudo apt install just fd-find xh podman-compose
 You will also need these, which are trickier to install:
 
 - Rust: https://rustup.rs
-- Bindgen: https://rust-lang.github.io/rust-bindgen/requirements.html
+- Bindgen: https://rust-lang.github.io/rust-bindgen/command-line-usage.html
 - OpenAPI Generator: https://openapi-generator.tech/docs/installation
 - Podman: https://podman.io/docs/installation
 - Bun (to test the examples): https://bun.com/
@@ -79,8 +79,6 @@ This repository depends on automatic code generation (codegen) for:
 
 - Rust bindings to Orthanc's C plugin header
 - Orthanc API models (and client) generated from the [OpenAPI specification](https://orthanc.uclouvain.be/api/)
-
-To run the codegen:
 
 ```shell
 just
