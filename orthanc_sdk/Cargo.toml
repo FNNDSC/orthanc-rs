@@ -8,10 +8,6 @@ repository.workspace = true
 keywords = ["orthanc", "plugin", "ffi"]
 categories = ["science::neuroscience", "science", "api-bindings"]
 
-# bindings.rs is ignored by git because it is automatically generated,
-# but it must be published.
-include = [ "**/*.rs" ]
-
 [dependencies]
 orthanc_client_ogen = { path = "../orthanc_client_ogen", version = "1.12", default-features = false }
 orthanc_api = { path = "../orthanc_api", version = "0.0.2" }

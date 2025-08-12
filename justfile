@@ -28,6 +28,6 @@ _fix_rustdoc_links file:
 
 # Download Orthanc plugin C header file
 download-header:
-    mkdir -p 3rdparty
-    wget -O 3rdparty/OrthancCPlugin.h 'https://orthanc.uclouvain.be/hg/orthanc/raw-file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h'
+    mkdir -p orthanc_sdk/3rdparty
+    wget -O orthanc_sdk/3rdparty/OrthancCPlugin.h 'https://orthanc.uclouvain.be/hg/orthanc/raw-file/Orthanc-1.12.8/OrthancServer/Plugins/Include/orthanc/OrthancCPlugin.h'
 
