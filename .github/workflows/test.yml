@@ -31,9 +31,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: ${{ hashFiles('flake.nix', 'flake.lock', 'justfile', 'orthanc_client_ogen_overlay/**') }}
-          path: |
-            orthanc_client_ogen
-            3rdparty/OrthancCPlugin.h
+          path: orthanc_client_ogen
       - name: Install Nix
         if: steps.cache.outputs.cache-hit != 'true'
         uses: cachix/install-nix-action@v31
@@ -74,9 +72,7 @@ jobs:
         uses: actions/cache@v4
         with:
           key: ${{ hashFiles('flake.nix', 'flake.lock', 'justfile', 'orthanc_client_ogen_overlay/**') }}
-          path: |
-            orthanc_client_ogen
-            3rdparty/OrthancCPlugin.h
+          path: orthanc_client_ogen
       - name: Codegen
         if: steps.cache.outputs.cache-hit != 'true'
         shell: 'nix develop -c bash -e {0}'
