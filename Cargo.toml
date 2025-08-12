@@ -8,5 +8,7 @@ members = [
     "orthanc_client_ogen",
     "blt",
     "examples/basic",
-    "examples/webapp"
+    "examples/webapp",
+    "include_webdir_macros",
+    "include_webdir"
 ]

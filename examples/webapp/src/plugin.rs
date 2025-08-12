@@ -5,6 +5,7 @@
 use std::sync::RwLock;
 
 use include_dir::include_dir;
+use include_webdir::{CWebBundle, include_cwebdir};
 use orthanc_sdk::bindings;
 
 struct OrthancContext(*mut bindings::OrthancPluginContext);
@@ -12,14 +13,9 @@ unsafe impl Send for OrthancContext {}
 unsafe impl Sync for OrthancContext {}
 
 const DIST: include_dir::Dir = include_dir!("$CARGO_MANIFEST_DIR/dist");
+const PREPARED: CWebBundle = include_cwebdir!("$CARGO_MANIFEST_DIR/dist");
 
-static GLOBAL_STATE: RwLock<Option<AppState>> = RwLock::new(None);
-
-/// Global application state.
-struct AppState {
-    context: OrthancContext,
-    prepared_bundle: orthanc_sdk::webapp::PreparedBundle<'static>,
-}
+static GLOBAL_STATE: RwLock<Option<OrthancContext>> = RwLock::new(None);
 
 #[unsafe(no_mangle)]
 pub extern "C" fn OrthancPluginGetName() -> *const u8 {
@@ -38,16 +34,8 @@ pub extern "C" fn OrthancPluginInitialize(
 ) -> bindings::OrthancPluginErrorCode {
     orthanc_sdk::register_rest_no_lock(context, c"/simple/?(.*)", Some(serve_simple));
     orthanc_sdk::register_rest_no_lock(context, c"/prepared/?(.*)", Some(serve_prepared));
-    let prepared_bundle = orthanc_sdk::webapp::prepare_bundle(
-        &DIST,
-        |p| p.ends_with(".js"),
-        |_| c"Tue, 22 Feb 2022 20:20:20 GMT",
-    );
     let mut global_state = GLOBAL_STATE.try_write().unwrap();
-    *global_state = Some(AppState {
-        context: OrthancContext(context),
-        prepared_bundle,
-    });
+    *global_state = Some(OrthancContext(context));
     bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_Success
 }
 
@@ -64,7 +52,7 @@ extern "C" fn serve_simple(
     request: *const bindings::OrthancPluginHttpRequest,
 ) -> bindings::OrthancPluginErrorCode {
     if let Ok(app_state) = GLOBAL_STATE.try_read()
-        && let Some(AppState { context, .. }) = app_state.as_ref()
+        && let Some(context) = app_state.as_ref()
     {
         orthanc_sdk::webapp::serve_static_file(context.0, output, request, &DIST)
     } else {
@@ -79,12 +67,9 @@ extern "C" fn serve_prepared(
     request: *const bindings::OrthancPluginHttpRequest,
 ) -> bindings::OrthancPluginErrorCode {
     if let Ok(app_state) = GLOBAL_STATE.try_read()
-        && let Some(AppState {
-            context,
-            prepared_bundle,
-        }) = app_state.as_ref()
+        && let Some(context) = app_state.as_ref()
     {
-        orthanc_sdk::webapp::serve_static_file(context.0, output, request, prepared_bundle)
+        orthanc_sdk::webapp::serve_static_file(context.0, output, request, &PREPARED)
     } else {
         bindings::OrthancPluginErrorCode_OrthancPluginErrorCode_InternalError
     }
